@@ -1,0 +1,72 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Aa]rtifacts/
+[Pp]ublish/
+
+# Visual Studio and IDE state
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
+*.pubxml.user
+
+# Build, debug, and profiling artifacts
+*.pdb
+*.exe
+*.mdb
+*.ilk
+*.iobj
+*.ipdb
+*.pgc
+*.pgd
+*.vsp
+*.vspx
+*.sap
+TestResults/
+BenchmarkDotNet.Artifacts/
+
+# Local databases and SQLite sidecar files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite3
+
+# Logs, crash dumps, and temporary files
+*.log
+*.dmp
+*.dump
+*.mdmp
+*.tmp
+*.temp
+*.bak
+*.old
+*.orig
+*.cache
+*.crash
+~$*
+
+# OS metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.snk
+
+# NuGet local output
+packages/
+*.nupkg
+*.snupkg
