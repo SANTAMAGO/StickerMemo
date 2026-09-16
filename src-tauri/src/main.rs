@@ -91,11 +91,9 @@ fn main() {
             commands::get_note_window_position,
         ])
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
                 let label = window.label();
                 if label.starts_with("note-") {
-                    api.prevent_close();
-                    let _ = window.hide();
                     let id = label.strip_prefix("note-").unwrap_or(label).to_string();
                     let app = window.app_handle().clone();
                     let state = app.state::<AppState>();
@@ -106,7 +104,8 @@ fn main() {
                         }
                     }
                     let _ = app.emit("floating-state-changed", (&id, false));
-                    crate::log_startup(&format!("CloseRequested on {}: intercepted and hidden", label));
+                    crate::log_startup(&format!("CloseRequested on {}: destroying window and updating is_floating=false", label));
+                    let _ = window.destroy();
                 }
             }
         })

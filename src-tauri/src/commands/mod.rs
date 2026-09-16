@@ -96,7 +96,7 @@ pub fn delete_note(
     // Close floating window if open
     let label = format!("note-{}", id);
     if let Some(win) = app.get_webview_window(&label) {
-        let _ = win.close();
+        let _ = win.destroy();
     }
 
     let _ = app.emit("note-deleted", &id);
@@ -124,7 +124,7 @@ pub fn archive_note(
 
         let label = format!("note-{}", id);
         if let Some(win) = app.get_webview_window(&label) {
-            let _ = win.close();
+            let _ = win.destroy();
         }
 
         let _ = app.emit("notes-changed", ());
@@ -222,7 +222,7 @@ pub fn open_floating_note(
         .inner_size(width, height)
         .decorations(false)
         .transparent(true)
-        .always_on_top(note.is_topmost)
+        .always_on_top(true)
         .skip_taskbar(true)
         .shadow(false);
 
@@ -245,10 +245,18 @@ pub fn open_floating_note(
         err_msg
     })?;
 
+    if note.x.is_none() || note.y.is_none() {
+        if let Ok(pos) = win.outer_position() {
+            note.x = Some(pos.x as f64);
+            note.y = Some(pos.y as f64);
+            let _ = state.db.save_or_update_note(&note);
+        }
+    }
+
     let _ = win.unminimize();
     let _ = win.show();
     let _ = win.set_focus();
-    let _ = win.set_always_on_top(note.is_topmost);
+    let _ = win.set_always_on_top(true);
 
     crate::log_startup(&format!("Floating note window {} created and shown successfully", label));
     let _ = app.emit("floating-state-changed", (&id, true));
@@ -275,8 +283,8 @@ pub fn close_floating_note(
     crate::log_startup(&format!("close_floating_note called for ID: {}", id));
     let label = format!("note-{}", id);
     if let Some(win) = app.get_webview_window(&label) {
-        crate::log_startup(&format!("Hiding floating note window: {}", label));
-        let _ = win.hide();
+        crate::log_startup(&format!("Destroying floating note window: {}", label));
+        let _ = win.destroy();
     }
 
     let mut notes = state
@@ -288,7 +296,7 @@ pub fn close_floating_note(
         let _ = state.db.save_or_update_note(note);
     }
     let _ = app.emit("floating-state-changed", (&id, false));
-    crate::log_startup(&format!("Floating note window {} hidden successfully", label));
+    crate::log_startup(&format!("Floating note window {} destroyed and DB updated (is_floating=false)", label));
     Ok(())
 }
 
