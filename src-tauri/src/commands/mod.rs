@@ -156,7 +156,17 @@ pub fn open_floating_note(
     let label = format!("note-{}", id);
 
     if let Some(existing) = app.get_webview_window(&label) {
-        crate::log_startup(&format!("Existing window found for label: {}, bringing to front", label));
+        crate::log_startup(&format!("Existing window found for label: {}, showing and bringing to front", label));
+        
+        // Update DB is_floating = true
+        if let Ok(mut notes) = state.db.get_all_active_notes() {
+            if let Some(note) = notes.iter_mut().find(|n| n.id == id) {
+                note.is_floating = true;
+                let _ = state.db.save_or_update_note(note);
+            }
+        }
+        let _ = app.emit("floating-state-changed", (&id, true));
+
         let _ = existing.unminimize();
         let _ = existing.show();
         let _ = existing.set_focus();
@@ -222,6 +232,7 @@ pub fn open_floating_note(
     let _ = win.unminimize();
     let _ = win.show();
     let _ = win.set_focus();
+    let _ = win.set_always_on_top(note.is_topmost);
 
     crate::log_startup(&format!("Floating note window {} created and shown successfully", label));
     let _ = app.emit("floating-state-changed", (&id, true));
@@ -239,16 +250,17 @@ pub fn get_current_note(
     get_note_by_id(state, id.to_string())
 }
 
-
 #[tauri::command]
 pub fn close_floating_note(
     app: AppHandle,
     state: State<'_, AppState>,
     id: String,
 ) -> Result<(), String> {
+    crate::log_startup(&format!("close_floating_note called for ID: {}", id));
     let label = format!("note-{}", id);
     if let Some(win) = app.get_webview_window(&label) {
-        let _ = win.close();
+        crate::log_startup(&format!("Hiding floating note window: {}", label));
+        let _ = win.hide();
     }
 
     let mut notes = state
@@ -259,8 +271,8 @@ pub fn close_floating_note(
         note.is_floating = false;
         let _ = state.db.save_or_update_note(note);
     }
-
     let _ = app.emit("floating-state-changed", (&id, false));
+    crate::log_startup(&format!("Floating note window {} hidden successfully", label));
     Ok(())
 }
 
@@ -314,7 +326,12 @@ pub fn import_sticky_notes_cmd(
 
 #[tauri::command]
 pub fn exit_app(app: AppHandle) {
-    app.exit(0);
+    crate::perform_clean_exit(&app);
+}
+
+#[tauri::command]
+pub fn log_front(msg: String) {
+    crate::log_startup(&format!("[FRONT] {}", msg));
 }
 
 #[tauri::command]

@@ -8,12 +8,12 @@ mod platform;
 mod storage;
 
 use commands::AppState;
-use platform::check_single_instance;
+use platform::check_single_instance_or_replace;
 use storage::Database;
 use std::sync::Arc;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize};
 
 pub fn log_startup(msg: &str) {
     let log_path = std::env::temp_dir().join("StickerMemo-rust.log");
@@ -25,17 +25,28 @@ pub fn log_startup(msg: &str) {
         .and_then(|mut f| std::io::Write::write_all(&mut f, line.as_bytes()));
 }
 
+pub fn perform_clean_exit(app: &AppHandle) {
+    log_startup("=== perform_clean_exit called: closing all windows and terminating ===");
+    for (label, win) in app.webview_windows() {
+        log_startup(&format!("Destroying window: {}", label));
+        let _ = win.destroy();
+    }
+    std::thread::sleep(std::time::Duration::from_millis(50));
+    log_startup("Process exiting cleanly with code 0");
+    std::process::exit(0);
+}
+
 fn main() {
     log_startup("=== StickerMemo Rust Launching ===");
 
-    // 1. Single-instance check
-    let _instance_guard = match check_single_instance() {
+    // 1. Single-instance check and graceful replacement of prior instance
+    let _instance_guard = match check_single_instance_or_replace() {
         Some(guard) => {
             log_startup("Single-instance mutex acquired successfully");
             guard
         }
         None => {
-            log_startup("Another instance is already running; terminating silently.");
+            log_startup("Failed to acquire single-instance mutex; terminating.");
             return;
         }
     };
@@ -72,15 +83,42 @@ fn main() {
             commands::set_autostart_setting,
             commands::import_sticky_notes_cmd,
             commands::exit_app,
+            commands::log_front,
             commands::toggle_deck,
             commands::start_dragging,
             commands::set_note_window_size,
             commands::get_note_window_size,
             commands::get_note_window_position,
         ])
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let label = window.label();
+                if label.starts_with("note-") {
+                    api.prevent_close();
+                    let _ = window.hide();
+                    let id = label.strip_prefix("note-").unwrap_or(label).to_string();
+                    let app = window.app_handle().clone();
+                    let state = app.state::<AppState>();
+                    if let Ok(mut notes) = state.db.get_all_active_notes() {
+                        if let Some(note) = notes.iter_mut().find(|n| n.id == id) {
+                            note.is_floating = false;
+                            let _ = state.db.save_or_update_note(note);
+                        }
+                    }
+                    let _ = app.emit("floating-state-changed", (&id, false));
+                    crate::log_startup(&format!("CloseRequested on {}: intercepted and hidden", label));
+                }
+            }
+        })
         .setup(move |app| {
             log_startup("Tauri setup hook entered");
             let handle = app.handle().clone();
+
+            // Setup listener for exit signal from a newly launched instance
+            let exit_handle = handle.clone();
+            platform::listen_for_exit_signal(move || {
+                perform_clean_exit(&exit_handle);
+            });
 
             // 3. Position Deck Window on Screen Right Edge
             if let Some(deck) = app.get_webview_window("deck") {
@@ -115,8 +153,6 @@ fn main() {
             log_startup("Tauri setup completed successfully");
             Ok(())
         })
-
-
         .run(tauri::generate_context!())
         .expect("error while running sticker-memo");
 }
@@ -172,7 +208,7 @@ fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
                 let _ = platform::set_run_at_startup(!current);
             }
             "quit" => {
-                app.exit(0);
+                perform_clean_exit(app);
             }
             _ => {}
         })

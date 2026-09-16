@@ -105,12 +105,20 @@ function renderTabs() {
     // Click opens floating note
     tab.addEventListener("click", async (e) => {
       e.stopPropagation();
-      console.log("Deck tab clicked for note ID:", note.id);
+      try {
+        await invoke("log_front", { msg: `Deck tab clicked for note ID: ${note.id} (${note.displayMainTitle})` });
+      } catch {}
       collapseHoveredPreviewImmediate();
       try {
         await invoke("open_floating_note", { id: note.id });
+        try {
+          await invoke("log_front", { msg: `open_floating_note succeeded for ID: ${note.id}` });
+        } catch {}
       } catch (err) {
         console.error("Failed to open floating note:", err);
+        try {
+          await invoke("log_front", { msg: `open_floating_note failed for ID: ${note.id}: ${err}` });
+        } catch {}
       }
     });
 
@@ -254,11 +262,16 @@ async function renderDrawerList() {
     // Click on item opens floating note
     item.addEventListener("click", async (e) => {
       if (e.target.closest(".restore-btn") || e.target.closest(".delete-btn")) return;
-      console.log("Drawer item clicked for note ID:", note.id);
+      try {
+        await invoke("log_front", { msg: `Drawer item clicked for note ID: ${note.id} (${note.displayMainTitle})` });
+      } catch {}
       try {
         await invoke("open_floating_note", { id: note.id });
       } catch (err) {
         console.error("Failed to open floating note from drawer:", err);
+        try {
+          await invoke("log_front", { msg: `Drawer open_floating_note failed for ID: ${note.id}: ${err}` });
+        } catch {}
       }
     });
 
