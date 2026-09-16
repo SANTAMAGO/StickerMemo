@@ -152,31 +152,42 @@ pub fn open_floating_note(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<(), String> {
+    crate::log_startup(&format!("open_floating_note called for ID: {}", id));
     let label = format!("note-{}", id);
 
     if let Some(existing) = app.get_webview_window(&label) {
+        crate::log_startup(&format!("Existing window found for label: {}, bringing to front", label));
         let _ = existing.unminimize();
         let _ = existing.show();
         let _ = existing.set_focus();
+        let _ = existing.set_always_on_top(true);
         return Ok(());
     }
 
-    let mut notes = state
-        .db
-        .get_all_active_notes()
-        .map_err(|e| e.to_string())?;
-    let note = notes
-        .iter_mut()
-        .find(|n| n.id == id)
-        .ok_or_else(|| "메모를 찾을 수 없습니다.".to_string())?;
+    let mut note = if let Ok(active) = state.db.get_all_active_notes() {
+        if let Some(n) = active.into_iter().find(|n| n.id == id) {
+            Some(n)
+        } else if let Ok(archived) = state.db.get_all_archived_notes() {
+            archived.into_iter().find(|n| n.id == id)
+        } else {
+            None
+        }
+    } else {
+        None
+    }.ok_or_else(|| {
+        let msg = format!("메모를 찾을 수 없습니다: {}", id);
+        crate::log_startup(&msg);
+        msg
+    })?;
 
     note.is_floating = true;
     state
         .db
-        .save_or_update_note(note)
+        .save_or_update_note(&note)
         .map_err(|e| e.to_string())?;
 
-    let url = WebviewUrl::App(format!("note.html?id={}", id).into());
+    // Use clean filename without invalid NTFS query parameters
+    let url = WebviewUrl::App("note.html".into());
     let width = if note.width >= 280.0 { note.width } else { 350.0 };
     let height = if note.height >= 180.0 { note.height } else { 350.0 };
 
@@ -189,18 +200,45 @@ pub fn open_floating_note(
         .skip_taskbar(true)
         .shadow(false);
 
-    if let (Some(x), Some(y)) = (note.x, note.y) {
+    if let (Some(mut x), Some(mut y)) = (note.x, note.y) {
+        if let Ok(Some(mon)) = app.primary_monitor() {
+            let size = mon.size();
+            let max_x = (size.width as f64 - width).max(0.0);
+            let max_y = (size.height as f64 - height).max(0.0);
+            x = x.clamp(0.0, max_x);
+            y = y.clamp(0.0, max_y);
+        }
         builder = builder.position(x, y);
     } else {
         builder = builder.center();
     }
 
-    let win = builder.build().map_err(|e| e.to_string())?;
+    let win = builder.build().map_err(|e| {
+        let err_msg = format!("Failed to build floating note window {}: {}", label, e);
+        crate::log_startup(&err_msg);
+        err_msg
+    })?;
+
+    let _ = win.unminimize();
+    let _ = win.show();
     let _ = win.set_focus();
 
+    crate::log_startup(&format!("Floating note window {} created and shown successfully", label));
     let _ = app.emit("floating-state-changed", (&id, true));
     Ok(())
 }
+
+#[tauri::command]
+pub fn get_current_note(
+    window: tauri::WebviewWindow,
+    state: State<'_, AppState>,
+) -> Result<NoteModel, String> {
+    let label = window.label();
+    let id = label.strip_prefix("note-").unwrap_or(label);
+    crate::log_startup(&format!("get_current_note called from window label: {}, resolved id: {}", label, id));
+    get_note_by_id(state, id.to_string())
+}
+
 
 #[tauri::command]
 pub fn close_floating_note(

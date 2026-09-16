@@ -13,7 +13,7 @@ use storage::Database;
 use std::sync::Arc;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize};
 
 pub fn log_startup(msg: &str) {
     let log_path = std::env::temp_dir().join("StickerMemo-rust.log");
@@ -67,6 +67,7 @@ fn main() {
             commands::open_floating_note,
             commands::close_floating_note,
             commands::get_note_by_id,
+            commands::get_current_note,
             commands::get_autostart,
             commands::set_autostart_setting,
             commands::import_sticky_notes_cmd,
@@ -103,38 +104,18 @@ fn main() {
 
             // 5. Restore Floating Notes
             if let Ok(active_notes) = db.get_all_active_notes() {
-                let floating_count = active_notes.iter().filter(|n| n.is_floating).count();
-                log_startup(&format!("Active notes count: {}, floating: {}", active_notes.len(), floating_count));
+                let floating_notes: Vec<_> = active_notes.into_iter().filter(|n| n.is_floating).collect();
+                log_startup(&format!("Restoring {} floating notes", floating_notes.len()));
 
-                for note in active_notes.into_iter().filter(|n| n.is_floating) {
-                    let note_id = note.id.clone();
-                    let label = format!("note-{}", note_id);
-                    let url = WebviewUrl::App(format!("note.html?id={}", note_id).into());
-                    let width = if note.width >= 280.0 { note.width } else { 350.0 };
-                    let height = if note.height >= 180.0 { note.height } else { 350.0 };
-
-                    let mut builder = WebviewWindowBuilder::new(&handle, &label, url)
-                        .title("StickerMemo")
-                        .inner_size(width, height)
-                        .decorations(false)
-                        .transparent(true)
-                        .always_on_top(note.is_topmost)
-                        .skip_taskbar(true)
-                        .shadow(false);
-
-                    if let (Some(x), Some(y)) = (note.x, note.y) {
-                        builder = builder.position(x, y);
-                    } else {
-                        builder = builder.center();
-                    }
-
-                    let _ = builder.build();
+                for note in floating_notes {
+                    let _ = commands::open_floating_note(handle.clone(), app.state::<AppState>(), note.id);
                 }
             }
 
             log_startup("Tauri setup completed successfully");
             Ok(())
         })
+
 
         .run(tauri::generate_context!())
         .expect("error while running sticker-memo");

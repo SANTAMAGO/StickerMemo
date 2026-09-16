@@ -103,9 +103,15 @@ function renderTabs() {
     tab.addEventListener("mouseleave", () => onTabMouseLeave(tab));
 
     // Click opens floating note
-    tab.addEventListener("click", async () => {
+    tab.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      console.log("Deck tab clicked for note ID:", note.id);
       collapseHoveredPreviewImmediate();
-      await invoke("open_floating_note", { id: note.id });
+      try {
+        await invoke("open_floating_note", { id: note.id });
+      } catch (err) {
+        console.error("Failed to open floating note:", err);
+      }
     });
 
     tabsStack.appendChild(tab);
@@ -248,7 +254,12 @@ async function renderDrawerList() {
     // Click on item opens floating note
     item.addEventListener("click", async (e) => {
       if (e.target.closest(".restore-btn") || e.target.closest(".delete-btn")) return;
-      await invoke("open_floating_note", { id: note.id });
+      console.log("Drawer item clicked for note ID:", note.id);
+      try {
+        await invoke("open_floating_note", { id: note.id });
+      } catch (err) {
+        console.error("Failed to open floating note from drawer:", err);
+      }
     });
 
     // Restore button

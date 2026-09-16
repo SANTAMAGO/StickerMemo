@@ -34,20 +34,25 @@ const boldChip = document.getElementById("bold-chip");
 const resizeGrip = document.getElementById("resize-grip");
 
 async function init() {
-  if (!noteId) {
-    console.error("Missing note ID parameter");
-    return;
-  }
-
   try {
-    note = await invoke("get_note_by_id", { id: noteId });
-    applyNoteToUi();
-    setupEventListeners();
-    setupWindowTracking();
+    note = await invoke("get_current_note");
+    if (!note) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const noteId = urlParams.get("id");
+      if (noteId) {
+        note = await invoke("get_note_by_id", { id: noteId });
+      }
+    }
+    if (note) {
+      applyNoteToUi();
+      setupEventListeners();
+      setupWindowTracking();
+    }
   } catch (err) {
     console.error("Failed to load note:", err);
   }
 }
+
 
 function applyNoteToUi() {
   if (!note) return;
