@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StickerMemo Deck</title>
+  <link rel="stylesheet" href="deck.css" />
+</head>
+<body class="deck-body">
+  <div id="root" class="deck-root">
+    
+    <!-- All Notes & Archive Drawer Panel -->
+    <div id="all-notes-drawer" class="drawer-container hidden">
+      <div class="drawer-card">
+        <div class="drawer-header">
+          <span class="drawer-title">🗂️ 메모 서랍 (Drawer)</span>
+          <button id="drawer-close-btn" class="icon-btn close-btn" title="닫기 (ESC)">✕</button>
+        </div>
+
+        <!-- Segmented Tab: [ Active ] [ Archived ] -->
+        <div class="segmented-control">
+          <button id="tab-active-btn" class="seg-btn active">Active</button>
+          <button id="tab-archived-btn" class="seg-btn">Archived</button>
+        </div>
+
+        <!-- Search Box -->
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-input" placeholder="메모 검색..." autocomplete="off" />
+        </div>
+
+        <!-- Scrollable List -->
+        <div id="drawer-list" class="drawer-list"></div>
+
+        <!-- Footer -->
+        <div id="drawer-footer" class="drawer-footer">총 0개의 메모</div>
+      </div>
+    </div>
+
+    <!-- Edge Deck Tabs (Attached to right screen edge) -->
+    <div id="deck-edge-container" class="deck-edge-container state-dormant">
+      <div id="tabs-stack" class="tabs-stack">
+        <!-- Dynamically rendered tabs -->
+      </div>
+      
+      <!-- +N More Button -->
+      <button id="more-notes-btn" class="more-notes-btn hidden" title="전체 메모 및 보관함 열기">
+        <span>📂</span>
+        <span id="more-count-text">+0 more</span>
+      </button>
+
+      <!-- Add New Note Button -->
+      <button id="add-note-btn" class="add-note-btn" title="새 메모 추가 (+)">
+        <span>➕</span>
+        <span class="add-label">새 메모</span>
+      </button>
+    </div>
+
+  </div>
+
+  <script src="deck.js"></script>
+</body>
+</html>

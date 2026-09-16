@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StickerMemo Confirm</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      background: transparent;
+      overflow: hidden;
+      font-family: "Malgun Gothic", "Pretendard", -apple-system, sans-serif;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .dialog-card {
+      background: #FEF08A;
+      border: 1px solid #FACC15;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      padding: 16px;
+      width: 290px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .dialog-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #1F2937;
+    }
+    .dialog-message {
+      font-size: 11.5px;
+      color: #4B5563;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .dialog-btn {
+      border: none;
+      border-radius: 4px;
+      padding: 5px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-cancel {
+      background: rgba(0, 0, 0, 0.08);
+      color: #374151;
+    }
+    .btn-cancel:hover {
+      background: rgba(0, 0, 0, 0.15);
+    }
+    .btn-confirm.destructive {
+      background: #DC2626;
+      color: #ffffff;
+    }
+    .btn-confirm.destructive:hover {
+      background: #B91C1C;
+    }
+    .btn-confirm.primary {
+      background: #2563EB;
+      color: #ffffff;
+    }
+    .btn-confirm.primary:hover {
+      background: #1D4ED8;
+    }
+  </style>
+</head>
+<body>
+  <div class="dialog-card">
+    <div id="dialog-title" class="dialog-title">Delete this note?</div>
+    <div id="dialog-message" class="dialog-message">This action cannot be undone.</div>
+    <div class="dialog-actions">
+      <button id="btn-cancel" class="dialog-btn btn-cancel">Cancel</button>
+      <button id="btn-confirm" class="dialog-btn btn-confirm destructive">Delete</button>
+    </div>
+  </div>
+</body>
+</html>

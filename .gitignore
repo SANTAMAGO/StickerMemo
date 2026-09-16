@@ -3,6 +3,9 @@
 [Oo]bj/
 [Aa]rtifacts/
 [Pp]ublish/
+target/
+src-tauri/target/
+
 
 # Visual Studio and IDE state
 .vs/

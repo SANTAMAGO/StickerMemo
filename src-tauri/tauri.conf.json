@@ -1,0 +1,37 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "StickerMemo",
+  "version": "1.0.0",
+  "identifier": "com.stickermemo.app",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "deck",
+        "title": "StickerMemo",
+        "url": "deck.html",
+        "width": 460,
+        "height": 640,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "shadow": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "icon": [
+      "../Assets/app_icon.ico",
+      "../Assets/app_icon.png"
+    ]
+  }
+}
