@@ -8,7 +8,7 @@ mod platform;
 mod storage;
 
 use commands::AppState;
-use platform::check_single_instance_or_replace;
+use platform::check_single_instance;
 use storage::Database;
 use std::sync::Arc;
 use tauri::menu::{Menu, MenuItem};
@@ -39,14 +39,14 @@ pub fn perform_clean_exit(app: &AppHandle) {
 fn main() {
     log_startup("=== StickerMemo Rust Launching ===");
 
-    // 1. Single-instance check and graceful replacement of prior instance
-    let _instance_guard = match check_single_instance_or_replace() {
+    // 1. Single-instance check: if another instance is running, wake it and exit
+    let _instance_guard = match check_single_instance() {
         Some(guard) => {
             log_startup("Single-instance mutex acquired successfully");
             guard
         }
         None => {
-            log_startup("Failed to acquire single-instance mutex; terminating.");
+            log_startup("Another instance is already running. Signaled wakeup and exiting cleanly.");
             return;
         }
     };
@@ -114,10 +114,14 @@ fn main() {
             log_startup("Tauri setup hook entered");
             let handle = app.handle().clone();
 
-            // Setup listener for exit signal from a newly launched instance
-            let exit_handle = handle.clone();
-            platform::listen_for_exit_signal(move || {
-                perform_clean_exit(&exit_handle);
+            // Setup listener for wakeup signal from duplicate launches
+            let wakeup_handle = handle.clone();
+            platform::listen_for_wakeup_signal(move || {
+                if let Some(deck) = wakeup_handle.get_webview_window("deck") {
+                    let _ = deck.show();
+                    let _ = deck.unminimize();
+                    let _ = deck.set_focus();
+                }
             });
 
             // 3. Position Deck Window on Screen Right Edge

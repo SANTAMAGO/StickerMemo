@@ -72,6 +72,16 @@ pub fn save_note(
     // Notify deck to update tab preview in real-time
     let _ = app.emit("note-updated", &note);
 
+    let label = format!("note-{}", note.id);
+    if let Some(win) = app.get_webview_window(&label) {
+        let win_title = if note.title.trim().is_empty() {
+            "메모 (새 메모)".to_string()
+        } else {
+            format!("메모 - {}", note.title.trim())
+        };
+        let _ = win.set_title(&win_title);
+    }
+
     Ok(note)
 }
 
@@ -201,8 +211,14 @@ pub fn open_floating_note(
     let width = if note.width >= 280.0 { note.width } else { 350.0 };
     let height = if note.height >= 180.0 { note.height } else { 350.0 };
 
+    let win_title = if note.title.trim().is_empty() {
+        "메모 (새 메모)".to_string()
+    } else {
+        format!("메모 - {}", note.title.trim())
+    };
+
     let mut builder = WebviewWindowBuilder::new(&app, &label, url)
-        .title("StickerMemo")
+        .title(&win_title)
         .inner_size(width, height)
         .decorations(false)
         .transparent(true)
