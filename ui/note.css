@@ -366,11 +366,17 @@ body.note-body {
   justify-content: space-between;
   align-items: center;
   margin-top: 4px;
+  gap: 6px;
 }
 
 .timestamp-text {
   font-size: 10px;
   color: rgba(0, 0, 0, 0.45);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .resize-grip {
@@ -380,6 +386,7 @@ body.note-body {
   align-items: flex-end;
   justify-content: flex-end;
   cursor: se-resize;
+  flex-shrink: 0;
 }
 
 .hidden {

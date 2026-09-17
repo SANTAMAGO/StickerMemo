@@ -9,32 +9,32 @@
 </head>
 <body class="deck-body">
   <div id="root" class="deck-root">
-    
+
     <!-- All Notes & Archive Drawer Panel -->
     <div id="all-notes-drawer" class="drawer-container hidden">
       <div class="drawer-card">
         <div class="drawer-header">
-          <span class="drawer-title">🗂️ 메모 서랍 (Drawer)</span>
-          <button id="drawer-close-btn" class="icon-btn close-btn" title="닫기 (ESC)">✕</button>
+          <span class="drawer-title">🗂️ <span data-i18n="deck.drawer.title">전체 메모</span></span>
+          <button id="drawer-close-btn" class="icon-btn close-btn" data-i18n-title="deck.drawer.close_tooltip" title="닫기 (ESC)">✕</button>
         </div>
 
         <!-- Segmented Tab: [ Active ] [ Archived ] -->
         <div class="segmented-control">
-          <button id="tab-active-btn" class="seg-btn active">Active</button>
-          <button id="tab-archived-btn" class="seg-btn">Archived</button>
+          <button id="tab-active-btn" class="seg-btn active" data-i18n="deck.drawer.tab_active">Active</button>
+          <button id="tab-archived-btn" class="seg-btn" data-i18n="deck.drawer.tab_archived">Archived</button>
         </div>
 
         <!-- Search Box -->
         <div class="search-box">
           <span class="search-icon">🔍</span>
-          <input type="text" id="search-input" placeholder="메모 검색..." autocomplete="off" />
+          <input type="text" id="search-input" data-i18n-placeholder="deck.drawer.search_placeholder" placeholder="메모 검색..." autocomplete="off" />
         </div>
 
         <!-- Scrollable List -->
         <div id="drawer-list" class="drawer-list"></div>
 
         <!-- Footer -->
-        <div id="drawer-footer" class="drawer-footer">총 0개의 메모</div>
+        <div id="drawer-footer" class="drawer-footer" data-i18n="deck.drawer.footer_default">총 0개의 메모</div>
       </div>
     </div>
 
@@ -43,22 +43,23 @@
       <div id="tabs-stack" class="tabs-stack">
         <!-- Dynamically rendered tabs -->
       </div>
-      
+
       <!-- +N More Button -->
-      <button id="more-notes-btn" class="more-notes-btn hidden" title="전체 메모 및 보관함 열기">
+      <button id="more-notes-btn" class="more-notes-btn hidden" data-i18n-title="deck.more_notes_tooltip" title="전체 메모 및 보관함 열기">
         <span>📂</span>
         <span id="more-count-text">+0 more</span>
       </button>
 
       <!-- Add New Note Button -->
-      <button id="add-note-btn" class="add-note-btn" title="새 메모 추가 (+)">
+      <button id="add-note-btn" class="add-note-btn" data-i18n-title="deck.add_note_tooltip" title="새 메모 추가 (+)">
         <span>➕</span>
-        <span class="add-label">새 메모</span>
+        <span class="add-label" data-i18n="deck.add_note_label">새 메모</span>
       </button>
     </div>
 
   </div>
 
+  <script src="i18n.js"></script>
   <script src="delete-confirm.js"></script>
   <script src="deck.js"></script>
 </body>

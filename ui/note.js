@@ -2,6 +2,15 @@
 const tauri = window.__TAURI__ || {};
 const core = tauri.core || {};
 const invoke = core.invoke || tauri.invoke || (window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.invoke);
+const event = tauri.event || {};
+const listen = event.listen || (window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.listen) || (() => {});
+
+// i18n: window.StickerMemoI18n is loaded by ui/i18n.js (must be included
+// before this script - see note.html).
+const I18N = window.StickerMemoI18n;
+function t(key, params) {
+  return I18N ? I18N.t(key, params) : key;
+}
 
 const urlParams = new URLSearchParams(window.location.search);
 const noteId = urlParams.get("id");
@@ -34,6 +43,14 @@ const boldChip = document.getElementById("bold-chip");
 const resizeGrip = document.getElementById("resize-grip");
 
 async function init() {
+  if (I18N) {
+    try {
+      await I18N.initI18n(invoke);
+      document.documentElement.lang = I18N.getCurrentLocale();
+    } catch (err) {
+      console.error("i18n init failed:", err);
+    }
+  }
   try {
     note = await invoke("get_current_note");
     if (!note) {
@@ -47,6 +64,7 @@ async function init() {
       applyNoteToUi();
       setupEventListeners();
       setupWindowTracking();
+      setupTauriListeners();
     }
   } catch (err) {
     console.error("Failed to load note:", err);
@@ -106,11 +124,11 @@ function updateTimestampText() {
       const day = String(d.getDate()).padStart(2, "0");
       const h = String(d.getHours()).padStart(2, "0");
       const min = String(d.getMinutes()).padStart(2, "0");
-      timestampText.textContent = `수정: ${m}/${day} ${h}:${min}`;
+      timestampText.textContent = t("note.timestamp_updated_at", { m, d: day, h, min });
       return;
     } catch {}
   }
-  timestampText.textContent = "방금 수정됨";
+  timestampText.textContent = t("note.timestamp_just_updated");
 }
 
 function triggerSave() {
@@ -313,5 +331,23 @@ function scheduleWindowSave() {
   }, 500);
 }
 
-document.addEventListener("DOMContentLoaded", init);
+// Locale change broadcast from Rust (see commands::retranslate_everything).
+// Reload the dictionary, retranslate static markup (toolbar tooltips,
+// placeholders, popup labels), then refresh the one piece of dynamic text
+// this window renders itself: the "Updated M/D H:MM" / "Just updated"
+// timestamp line.
+function setupTauriListeners() {
+  listen("locale-changed", async (evt) => {
+    if (!I18N) return;
+    try {
+      await I18N.loadLocale(evt.payload);
+      document.documentElement.lang = I18N.getCurrentLocale();
+      I18N.applyI18n();
+      updateTimestampText();
+    } catch (err) {
+      console.error("Failed to apply locale change:", err);
+    }
+  });
+}
 
+document.addEventListener("DOMContentLoaded", init);

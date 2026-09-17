@@ -1,0 +1,17 @@
+html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:"Malgun Gothic","Segoe UI",sans-serif;background:#fef08a;color:#332a24}
+body{display:flex;align-items:stretch;justify-content:stretch}
+.settings-card{width:100%;height:100%;box-sizing:border-box;padding:16px 18px;background:#fef08a;border:1px solid #facc15;border-radius:12px;box-shadow:0 10px 25px #5b463533;display:flex;flex-direction:column}
+.settings-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.settings-title{font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.icon-btn{background:transparent;border:none;cursor:pointer;border-radius:4px;padding:2px 6px;color:#66584b;font-size:13px;font-weight:bold;flex-shrink:0}
+.icon-btn:hover{background:rgba(0,0,0,0.08);color:#332a24}
+.settings-section{margin-bottom:6px}
+.section-label{font-size:11px;font-weight:700;color:#66584b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.02em}
+.lang-options{display:flex;flex-direction:column;gap:4px}
+.lang-option{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:4px 2px;border-radius:6px}
+.lang-option:hover{background:rgba(0,0,0,0.05)}
+.lang-option input{cursor:pointer}
+.settings-rule{height:1px;background:#d6b36a;margin:10px 0}
+.autostart-row{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:4px 2px;border-radius:6px}
+.autostart-row:hover{background:rgba(0,0,0,0.05)}
+.autostart-row input{cursor:pointer}

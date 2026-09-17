@@ -1,6 +1,13 @@
 ﻿// Shared in-app confirmation for permanent note deletion.
+// Loaded on both deck.html and note.html, always after ui/i18n.js (see the
+// <script> order in each), so window.StickerMemoI18n is available by the
+// time this function actually runs (it's only invoked lazily, on a delete
+// click, by which point i18n has long since finished initializing).
 window.showDeleteConfirm = function (deleteAction) {
   if (document.querySelector(".delete-confirm-backdrop")) return;
+
+  const I18N = window.StickerMemoI18n;
+  const t = (key) => (I18N ? I18N.t(key) : key);
 
   const previousFocus = document.activeElement;
   const overlay = document.createElement("div");
@@ -8,14 +15,20 @@ window.showDeleteConfirm = function (deleteAction) {
   overlay.innerHTML =
     '<section class="delete-confirm-card" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title" aria-describedby="delete-confirm-description">' +
       '<div class="delete-confirm-icon" aria-hidden="true">!</div>' +
-      '<h2 id="delete-confirm-title">이 메모를 영구 삭제하시겠습니까?</h2>' +
-      '<p id="delete-confirm-description">이 작업은 되돌릴 수 없습니다.</p>' +
-      '<p class="delete-confirm-error" role="alert" hidden>삭제하지 못했습니다. 다시 시도해 주세요.</p>' +
+      '<h2 id="delete-confirm-title"></h2>' +
+      '<p id="delete-confirm-description"></p>' +
+      '<p class="delete-confirm-error" role="alert" hidden></p>' +
       '<div class="delete-confirm-actions">' +
-        '<button type="button" class="delete-confirm-cancel">취소</button>' +
-        '<button type="button" class="delete-confirm-delete">삭제</button>' +
+        '<button type="button" class="delete-confirm-cancel"></button>' +
+        '<button type="button" class="delete-confirm-delete"></button>' +
       '</div>' +
     '</section>';
+
+  overlay.querySelector("#delete-confirm-title").textContent = t("delete_confirm.title");
+  overlay.querySelector("#delete-confirm-description").textContent = t("delete_confirm.description");
+  overlay.querySelector(".delete-confirm-error").textContent = t("delete_confirm.error");
+  overlay.querySelector(".delete-confirm-cancel").textContent = t("common.cancel");
+  overlay.querySelector(".delete-confirm-delete").textContent = t("common.delete");
 
   const cancelButton = overlay.querySelector(".delete-confirm-cancel");
   const deleteButton = overlay.querySelector(".delete-confirm-delete");

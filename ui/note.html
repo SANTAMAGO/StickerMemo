@@ -11,7 +11,7 @@
   <div id="note-root" class="note-root">
     <!-- Paper Card Border -->
     <div id="paper-card" class="paper-card theme-yellow">
-      
+
       <!-- Top Bar (Draggable) -->
       <div id="top-bar" class="top-bar" data-tauri-drag-region>
         <!-- Masking Tape Badge -->
@@ -21,11 +21,11 @@
 
         <!-- Right Toolbar Controls -->
         <div class="toolbar">
-          <button id="font-btn" class="tool-btn" title="글꼴 및 텍스트 서식 (Font)">🔤</button>
-          <button id="color-btn" class="tool-btn" title="테마 색상 변경">🎨</button>
-          <button id="archive-btn" class="tool-btn" title="보관함으로 이동 (Archive)">📦</button>
-          <button id="delete-btn" class="tool-btn delete" title="메모 영구 삭제">🗑️</button>
-          <button id="close-btn" class="tool-btn close" title="닫기 및 Deck으로 복귀 (✕)">✕</button>
+          <button id="font-btn" class="tool-btn" data-i18n-title="note.font_tooltip" title="글꼴 및 텍스트 서식 (Font)">🔤</button>
+          <button id="color-btn" class="tool-btn" data-i18n-title="note.color_tooltip" title="테마 색상 변경">🎨</button>
+          <button id="archive-btn" class="tool-btn" data-i18n-title="note.archive_tooltip" title="보관함으로 이동 (Archive)">📦</button>
+          <button id="delete-btn" class="tool-btn delete" data-i18n-title="common.delete_permanently_tooltip" title="메모 영구 삭제">🗑️</button>
+          <button id="close-btn" class="tool-btn close" data-i18n-title="note.close_tooltip" title="닫기 및 Deck으로 복귀 (✕)">✕</button>
         </div>
       </div>
 
@@ -45,9 +45,9 @@
       <div id="font-popup" class="popup font-popup hidden">
         <div class="font-popup-header">
           <span class="font-badge-aa">Aa</span>
-          <span class="font-badge-label">서식</span>
+          <span class="font-badge-label" data-i18n="note.format_label">서식</span>
         </div>
-        
+
         <!-- Font Family Selector -->
         <div class="font-select-wrapper">
           <select id="font-family-select" class="font-select">
@@ -64,32 +64,32 @@
         <!-- Font Size Stepper & Bold Chip -->
         <div class="font-control-row">
           <div class="size-stepper">
-            <button id="btn-dec-size" class="step-btn" title="글자 크기 축소">−</button>
+            <button id="btn-dec-size" class="step-btn" data-i18n-title="note.decrease_size_tooltip" title="글자 크기 축소">−</button>
             <span id="font-size-text" class="size-text">13.5 pt</span>
-            <button id="btn-inc-size" class="step-btn" title="글자 크기 확대">+</button>
+            <button id="btn-inc-size" class="step-btn" data-i18n-title="note.increase_size_tooltip" title="글자 크기 확대">+</button>
           </div>
 
-          <div id="bold-chip" class="bold-chip" title="굵게 (Bold)">
+          <div id="bold-chip" class="bold-chip" data-i18n-title="note.bold_tooltip" title="굵게 (Bold)">
             <span class="bold-letter">B</span>
-            <span class="bold-text">굵게</span>
+            <span class="bold-text" data-i18n="note.bold_label">굵게</span>
           </div>
         </div>
       </div>
 
       <!-- Title Input -->
       <div class="title-container">
-        <input type="text" id="title-input" class="title-input" placeholder="제목 없는 메모" autocomplete="off" />
+        <input type="text" id="title-input" class="title-input" data-i18n-placeholder="note.title_placeholder" placeholder="제목 없는 메모" autocomplete="off" />
       </div>
 
       <!-- Content Editor Textarea -->
       <div class="editor-container">
-        <textarea id="content-editor" class="content-editor" placeholder="내용을 입력하세요..."></textarea>
+        <textarea id="content-editor" class="content-editor" data-i18n-placeholder="note.content_placeholder" placeholder="내용을 입력하세요..."></textarea>
       </div>
 
       <!-- Footer: Timestamp & Custom Resize Grip -->
       <div class="footer-bar">
         <span id="timestamp-text" class="timestamp-text">방금 수정됨</span>
-        <div id="resize-grip" class="resize-grip" title="크기 조절">
+        <div id="resize-grip" class="resize-grip" data-i18n-title="note.resize_tooltip" title="크기 조절">
           <svg width="12" height="12" viewBox="0 0 12 12">
             <path d="M 11,3 L 11,11 L 3,11 Z" fill="rgba(0,0,0,0.3)"/>
           </svg>
@@ -99,6 +99,7 @@
     </div>
   </div>
 
+  <script src="i18n.js"></script>
   <script src="delete-confirm.js"></script>
   <script src="note.js"></script>
 </body>

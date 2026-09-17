@@ -5,6 +5,14 @@ const invoke = core.invoke || tauri.invoke || (window.__TAURI_INTERNALS__ && win
 const event = tauri.event || {};
 const listen = event.listen || (window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.listen) || (() => {});
 
+// i18n: window.StickerMemoI18n is loaded by ui/i18n.js (must be included
+// before this script - see deck.html). `t()` here is a thin wrapper so the
+// rest of this file can call t("some.key", {n: 3}) without null-checking
+// the global every time.
+const I18N = window.StickerMemoI18n;
+function t(key, params) {
+  return I18N ? I18N.t(key, params) : key;
+}
 
 const THEMES = {
   Yellow: { bg: "#FEF08A", accent: "#A16207", border: "#FACC15" },
@@ -66,6 +74,14 @@ function syncDeckNativeBounds(state) {
 // INITIALIZATION
 // =========================================================
 async function init() {
+  if (I18N) {
+    try {
+      await I18N.initI18n(invoke);
+      document.documentElement.lang = I18N.getCurrentLocale();
+    } catch (err) {
+      console.error("i18n init failed:", err);
+    }
+  }
   await loadNotes();
   setupEventListeners();
   setupTauriListeners();
@@ -96,6 +112,8 @@ function renderTabs() {
 
   visibleNotes.forEach((note) => {
     const theme = getTheme(note.themeId);
+    const title = note.displayMainTitle || t("note.default_title");
+    const preview = note.displayHoverBodyPreview || t("note.empty_preview");
     const tab = document.createElement("div");
     tab.className = `note-tab ${note.isFloating ? "floating" : ""}`;
     tab.dataset.id = note.id;
@@ -106,7 +124,7 @@ function renderTabs() {
       <!-- Compact View -->
       <div class="tab-compact-view">
         <div class="tab-tape-indicator" style="background-color: ${theme.accent};"></div>
-        <span class="tab-title-text">${escapeHtml(note.displayMainTitle)}</span>
+        <span class="tab-title-text">${escapeHtml(title)}</span>
         ${note.isFloating ? '<span class="tab-pin-icon">📌</span>' : ""}
       </div>
 
@@ -114,9 +132,9 @@ function renderTabs() {
       <div class="tab-hover-view">
         <div class="hover-header">
           <div class="hover-tape" style="background-color: ${theme.accent};"></div>
-          <span class="hover-title">${escapeHtml(note.displayMainTitle)}</span>
+          <span class="hover-title">${escapeHtml(title)}</span>
         </div>
-        <div class="hover-body">${escapeHtml(note.displayHoverBodyPreview)}</div>
+        <div class="hover-body">${escapeHtml(preview)}</div>
       </div>
     `;
 
@@ -150,7 +168,7 @@ function renderTabs() {
   // More notes button
   if (allNotes.length > 8) {
     const hiddenCount = allNotes.length - 8;
-    moreCountText.textContent = `+${hiddenCount} more`;
+    moreCountText.textContent = t("deck.more_count", { n: hiddenCount });
     moreNotesBtn.classList.remove("hidden");
   } else {
     moreNotesBtn.classList.add("hidden");
@@ -252,8 +270,8 @@ async function renderDrawerList() {
 
   const totalCount = isArchivedTab ? list.length : allNotes.length;
   drawerFooter.textContent = isArchivedTab
-    ? `총 ${totalCount}개의 보관된 메모 중 ${list.length}개 표시`
-    : `총 ${totalCount}개의 활성 메모 중 ${list.length}개 표시`;
+    ? t("deck.drawer.footer_archived", { total: totalCount, shown: list.length })
+    : t("deck.drawer.footer_active", { total: totalCount, shown: list.length });
 
   if (list.length === 0) {
     const emptyMsg = document.createElement("div");
@@ -261,7 +279,7 @@ async function renderDrawerList() {
     emptyMsg.style.padding = "20px 0";
     emptyMsg.style.fontSize = "11px";
     emptyMsg.style.color = "#9CA3AF";
-    emptyMsg.textContent = isArchivedTab ? "보관된 메모가 없습니다." : "표시할 활성 메모가 없습니다.";
+    emptyMsg.textContent = isArchivedTab ? t("deck.drawer.empty_archived") : t("deck.drawer.empty_active");
     drawerList.appendChild(emptyMsg);
     return;
   }
@@ -273,14 +291,15 @@ async function renderDrawerList() {
     item.style.borderColor = note.isFloating ? theme.accent : theme.border;
 
     const dateStr = note.updatedAt ? formatShortDate(note.updatedAt) : "";
+    const title = note.displayMainTitle || t("note.default_title");
 
     item.innerHTML = `
       <div class="item-dot" style="background-color: ${theme.accent};"></div>
-      <span class="item-title">${escapeHtml(note.displayMainTitle)}</span>
+      <span class="item-title">${escapeHtml(title)}</span>
       <div class="item-right">
         ${isArchivedTab ? `
-          <button class="restore-btn" title="보관 해제 및 활성 메모로 복원">↩</button>
-          <button class="delete-btn" title="메모 영구 삭제">🗑️</button>
+          <button class="restore-btn" title="${t("deck.drawer.restore_tooltip")}">↩</button>
+          <button class="delete-btn" title="${t("common.delete_permanently_tooltip")}">🗑️</button>
         ` : (note.isFloating ? '<span>📌</span>' : '')}
         <span class="item-date">${dateStr}</span>
       </div>
@@ -440,6 +459,24 @@ function setupTauriListeners() {
       if (isDrawerOpen) renderDrawerList();
     }
   });
+
+  // Locale change broadcast from Rust (see commands::retranslate_everything).
+  // Reload the dictionary, retranslate static markup, then re-render
+  // everything that was built from JS templates (tab titles/previews,
+  // drawer footer counts, empty-state messages) so nothing is left in the
+  // old language.
+  listen("locale-changed", async (event) => {
+    if (!I18N) return;
+    try {
+      await I18N.loadLocale(event.payload);
+      document.documentElement.lang = I18N.getCurrentLocale();
+      I18N.applyI18n();
+      renderTabs();
+      if (isDrawerOpen) await renderDrawerList();
+    } catch (err) {
+      console.error("Failed to apply locale change:", err);
+    }
+  });
 }
 
 function formatShortDate(iso) {
@@ -464,7 +501,3 @@ function escapeHtml(str) {
 }
 
 document.addEventListener("DOMContentLoaded", init);
-
-
-
-
