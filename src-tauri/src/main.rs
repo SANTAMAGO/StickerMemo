@@ -3,6 +3,7 @@
 
 mod commands;
 mod domain;
+mod i18n;
 mod importer;
 mod platform;
 mod storage;
@@ -10,7 +11,7 @@ mod storage;
 use commands::AppState;
 use platform::check_single_instance;
 use storage::Database;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize};
@@ -34,6 +35,28 @@ pub fn perform_clean_exit(app: &AppHandle) {
     std::thread::sleep(std::time::Duration::from_millis(50));
     log_startup("Process exiting cleanly with code 0");
     std::process::exit(0);
+}
+
+/// Resolves the locale to use at startup.
+///
+/// - An explicit saved preference ("ko"/"en"/"ja") is normalized and used
+///   as-is.
+/// - "system" (or no saved preference at all, i.e. first run) re-detects
+///   the current Windows UI locale via `platform::detect_windows_ui_locale`.
+///   First run persists "system" explicitly, so subsequent launches keep
+///   following the OS locale until the user picks an explicit language in
+///   Settings.
+fn resolve_initial_locale(db: &Database) -> String {
+    match db.get_setting("locale") {
+        Ok(Some(saved)) if saved == "system" => {
+            i18n::normalize_locale(&platform::detect_windows_ui_locale()).to_string()
+        }
+        Ok(Some(saved)) => i18n::normalize_locale(&saved).to_string(),
+        _ => {
+            let _ = db.set_setting("locale", "system");
+            i18n::normalize_locale(&platform::detect_windows_ui_locale()).to_string()
+        }
+    }
 }
 
 fn main() {
@@ -63,7 +86,15 @@ fn main() {
         }
     };
 
-    let app_state = AppState { db: Arc::clone(&db) };
+    // 3. Locale resolution (must happen before the tray menu is built, since
+    // the tray is native and has no WebView to ask navigator.language later).
+    let initial_locale = resolve_initial_locale(&db);
+    log_startup(&format!("Resolved initial locale: {}", initial_locale));
+
+    let app_state = AppState {
+        db: Arc::clone(&db),
+        locale: Mutex::new(initial_locale.clone()),
+    };
 
     tauri::Builder::default()
         .manage(app_state)
@@ -90,6 +121,8 @@ fn main() {
             commands::set_note_window_size,
             commands::get_note_window_size,
             commands::get_note_window_position,
+            commands::get_locale_info,
+            commands::set_locale,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
@@ -124,7 +157,7 @@ fn main() {
                 }
             });
 
-            // 3. Position Deck Window on Screen Right Edge
+            // 4. Position Deck Window on Screen Right Edge
             if let Some(deck) = app.get_webview_window("deck") {
                 if let Ok(Some(monitor)) = deck.primary_monitor() {
                     let work_area = monitor.size();
@@ -140,11 +173,12 @@ fn main() {
                 }
             }
 
-            // 4. Setup System Tray
-            setup_tray(&handle)?;
+            // 5. Setup System Tray
+            let tray_handles = setup_tray(&handle, &initial_locale)?;
+            app.manage(tray_handles);
             log_startup("System tray initialized successfully");
 
-            // 5. Restore Floating Notes
+            // 6. Restore Floating Notes
             if let Ok(active_notes) = db.get_all_active_notes() {
                 let floating_notes: Vec<_> = active_notes.into_iter().filter(|n| n.is_floating).collect();
                 log_startup(&format!("Restoring {} floating notes", floating_notes.len()));
@@ -161,23 +195,45 @@ fn main() {
         .expect("error while running sticker-memo");
 }
 
-fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-    let new_note_item = MenuItem::with_id(app, "new_note", "➕ 새 메모", true, None::<&str>)?;
-    let toggle_deck_item = MenuItem::with_id(app, "toggle_deck", "🗂️ 덱 보이기 / 숨기기", true, None::<&str>)?;
-    let import_item = MenuItem::with_id(app, "import", "📥 Sticky Notes 가져오기", true, None::<&str>)?;
-    let autostart_item = MenuItem::with_id(
-        app,
-        "autostart",
-        if platform::is_run_at_startup() {
-            "🚀 Windows 시작 시 실행 [✓ ON]"
-        } else {
-            "🚀 Windows 시작 시 실행 [OFF]"
-        },
-        true,
-        None::<&str>,
-    )?;
-    let quit_item = MenuItem::with_id(app, "quit", "🚪 StickerMemo 종료", true, None::<&str>)?;
-    let about_item = MenuItem::with_id(app, "about", "StickerMemo 정보...", true, None::<&str>)?;
+/// Handles to the tray's individual menu items, kept around (via
+/// `app.manage(...)`) so [`apply_tray_texts`] can retranslate them in
+/// place with `MenuItem::set_text` on a locale change, instead of tearing
+/// down and rebuilding the whole native tray menu.
+pub struct TrayHandles {
+    new_note: MenuItem<tauri::Wry>,
+    toggle_deck: MenuItem<tauri::Wry>,
+    import: MenuItem<tauri::Wry>,
+    autostart: MenuItem<tauri::Wry>,
+    settings: MenuItem<tauri::Wry>,
+    about: MenuItem<tauri::Wry>,
+    quit: MenuItem<tauri::Wry>,
+}
+
+/// Retranslates every tray menu item's text in place for `locale`. The
+/// autostart item's ON/OFF suffix is recomputed from the actual current
+/// registry state every time (not cached), so it can never go stale after
+/// a toggle.
+pub fn apply_tray_texts(app: &AppHandle, locale: &str) {
+    let handles = app.state::<TrayHandles>();
+    let _ = handles.new_note.set_text(i18n::t(locale, "tray.new_note"));
+    let _ = handles.toggle_deck.set_text(i18n::t(locale, "tray.toggle_deck"));
+    let _ = handles.import.set_text(i18n::t(locale, "tray.import_sticky_notes"));
+    let autostart_key = if platform::is_run_at_startup() { "tray.autostart_on" } else { "tray.autostart_off" };
+    let _ = handles.autostart.set_text(i18n::t(locale, autostart_key));
+    let _ = handles.settings.set_text(i18n::t(locale, "tray.settings"));
+    let _ = handles.about.set_text(i18n::t(locale, "tray.about"));
+    let _ = handles.quit.set_text(i18n::t(locale, "tray.quit"));
+}
+
+fn setup_tray(app: &AppHandle, locale: &str) -> Result<TrayHandles, Box<dyn std::error::Error>> {
+    let new_note_item = MenuItem::with_id(app, "new_note", i18n::t(locale, "tray.new_note"), true, None::<&str>)?;
+    let toggle_deck_item = MenuItem::with_id(app, "toggle_deck", i18n::t(locale, "tray.toggle_deck"), true, None::<&str>)?;
+    let import_item = MenuItem::with_id(app, "import", i18n::t(locale, "tray.import_sticky_notes"), true, None::<&str>)?;
+    let autostart_key = if platform::is_run_at_startup() { "tray.autostart_on" } else { "tray.autostart_off" };
+    let autostart_item = MenuItem::with_id(app, "autostart", i18n::t(locale, autostart_key), true, None::<&str>)?;
+    let settings_item = MenuItem::with_id(app, "settings", i18n::t(locale, "tray.settings"), true, None::<&str>)?;
+    let about_item = MenuItem::with_id(app, "about", i18n::t(locale, "tray.about"), true, None::<&str>)?;
+    let quit_item = MenuItem::with_id(app, "quit", i18n::t(locale, "tray.quit"), true, None::<&str>)?;
 
     let menu = Menu::with_items(
         app,
@@ -186,6 +242,7 @@ fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
             &toggle_deck_item,
             &import_item,
             &autostart_item,
+            &settings_item,
             &about_item,
             &quit_item,
         ],
@@ -211,13 +268,43 @@ fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
             }
             "autostart" => {
                 let current = platform::is_run_at_startup();
-                let _ = platform::set_run_at_startup(!current);
+                let locale = app.state::<AppState>().current_locale();
+                let _ = platform::set_run_at_startup(!current, &locale);
+                // Refresh the [ON]/[OFF] suffix immediately so the menu
+                // never shows a stale state after the user toggles it.
+                apply_tray_texts(app, &locale);
+            }
+            "settings" => {
+                if let Some(window) = app.get_webview_window("settings") {
+                    let _ = window.show(); let _ = window.unminimize(); let _ = window.set_focus();
+                } else {
+                    let locale = app.state::<AppState>().current_locale();
+                    let _ = tauri::WebviewWindowBuilder::new(app, "settings", tauri::WebviewUrl::App("settings.html".into()))
+                        .title(i18n::t(&locale, "settings.window_title"))
+                        .inner_size(300.0, 300.0)
+                        .min_inner_size(300.0, 300.0)
+                        .resizable(false)
+                        .decorations(false)
+                        .center()
+                        .build();
+                }
             }
             "about" => {
                 if let Some(window) = app.get_webview_window("about") {
                     let _ = window.show(); let _ = window.unminimize(); let _ = window.set_focus();
                 } else {
-                    let _ = tauri::WebviewWindowBuilder::new(app, "about", tauri::WebviewUrl::App("about.html".into())).title("StickerMemo 정보").inner_size(320.0, 310.0).min_inner_size(320.0, 310.0).resizable(false).decorations(false).center().build();
+                    let locale = app.state::<AppState>().current_locale();
+                    // 340x340 (was 320x310): gives translated credits text
+                    // (which no longer relies on a hardcoded <br> line break)
+                    // safe room in en/ja without resizing the window.
+                    let _ = tauri::WebviewWindowBuilder::new(app, "about", tauri::WebviewUrl::App("about.html".into()))
+                        .title(i18n::t(&locale, "about.window_title"))
+                        .inner_size(340.0, 340.0)
+                        .min_inner_size(340.0, 340.0)
+                        .resizable(false)
+                        .decorations(false)
+                        .center()
+                        .build();
                 }
             }
             "quit" => {
@@ -238,10 +325,13 @@ fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         })
         .build(app)?;
 
-    Ok(())
+    Ok(TrayHandles {
+        new_note: new_note_item,
+        toggle_deck: toggle_deck_item,
+        import: import_item,
+        autostart: autostart_item,
+        settings: settings_item,
+        about: about_item,
+        quit: quit_item,
+    })
 }
-
-
-
-
-

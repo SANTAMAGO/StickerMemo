@@ -1,5 +1,6 @@
 use super::rtf_cleaner::clean_sticky_note_text;
 use crate::domain::{map_windows_sticky_theme, NoteModel};
+use crate::i18n;
 use chrono::Local;
 use rusqlite::Connection;
 use serde::Serialize;
@@ -31,14 +32,14 @@ pub fn is_sticky_notes_available() -> bool {
 }
 
 
-pub fn import_sticky_notes(existing_remote_ids: &HashSet<String>) -> ImportResult {
+pub fn import_sticky_notes(existing_remote_ids: &HashSet<String>, locale: &str) -> ImportResult {
     let src_db = get_sticky_notes_db_path();
     if !src_db.exists() {
         return ImportResult {
             success: false,
             imported_count: 0,
             skipped_count: 0,
-            message: "Windows Sticky Notes 데이터를 찾을 수 없습니다.".into(),
+            message: i18n::t(locale, "importer.source_not_found"),
             notes: Vec::new(),
         };
     }
@@ -53,7 +54,7 @@ pub fn import_sticky_notes(existing_remote_ids: &HashSet<String>) -> ImportResul
             success: false,
             imported_count: 0,
             skipped_count: 0,
-            message: format!("임시 데이터베이스 복사 실패: {}", e),
+            message: i18n::tf(locale, "importer.temp_copy_failed", &[("e", &e.to_string())]),
             notes: Vec::new(),
         };
     }
@@ -167,15 +168,13 @@ pub fn import_sticky_notes(existing_remote_ids: &HashSet<String>) -> ImportResul
         Ok((notes, skipped_count)) => {
             let imported_count = notes.len();
             let message = if skipped_count > 0 {
-                format!(
-                    "Windows Sticky Notes에서 {}개의 메모를 가져왔습니다. ({}개 기존 메모 건너뜀)",
-                    imported_count, skipped_count
+                i18n::tf(
+                    locale,
+                    "importer.imported_with_skipped",
+                    &[("n", &imported_count.to_string()), ("skipped", &skipped_count.to_string())],
                 )
             } else {
-                format!(
-                    "Windows Sticky Notes에서 {}개의 메모를 가져왔습니다.",
-                    imported_count
-                )
+                i18n::tf(locale, "importer.imported", &[("n", &imported_count.to_string())])
             };
             ImportResult {
                 success: true,
@@ -189,7 +188,7 @@ pub fn import_sticky_notes(existing_remote_ids: &HashSet<String>) -> ImportResul
             success: false,
             imported_count: 0,
             skipped_count: 0,
-            message: format!("Sticky Notes 가져오기 실패: {}", e),
+            message: i18n::tf(locale, "importer.import_failed", &[("e", &e.to_string())]),
             notes: Vec::new(),
         },
     }

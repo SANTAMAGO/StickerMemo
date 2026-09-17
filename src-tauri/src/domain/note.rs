@@ -79,9 +79,9 @@ impl NoteModel {
             is_bold: false,
             created_at: now.clone(),
             updated_at: now,
-            display_main_title: "새 메모".into(),
+            display_main_title: String::new(), // empty = "no title yet"; the WebView substitutes note.default_title (deck.js)
             display_sub_preview: None,
-            display_hover_body_preview: "(내용이 비어 있습니다)".into(),
+            display_hover_body_preview: String::new(), // empty = "no content yet"; the WebView substitutes note.empty_preview (deck.js)
         };
         note.recompute_previews();
         note
@@ -115,10 +115,10 @@ impl NoteModel {
                     clean
                 }
             } else {
-                "새 메모".into()
+                String::new() // no usable text either; WebView shows note.default_title
             };
         } else {
-            self.display_main_title = "새 메모".into();
+            self.display_main_title = String::new(); // no title, no text; WebView shows note.default_title
         }
 
         // 2. Sub Preview
@@ -141,7 +141,7 @@ impl NoteModel {
 
         // 3. Hover Body Preview
         if self.text.trim().is_empty() {
-            self.display_hover_body_preview = "(내용이 비어 있습니다)".into();
+            self.display_hover_body_preview = String::new(); // WebView shows note.empty_preview
         } else {
             let clean = clean_preview_string(&self.text);
             let char_count = clean.chars().count();

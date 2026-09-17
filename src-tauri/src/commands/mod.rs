@@ -1,13 +1,39 @@
 use crate::domain::NoteModel;
+use crate::i18n;
 use crate::importer::{import_sticky_notes as do_import, ImportResult};
 use crate::platform::{is_run_at_startup, set_run_at_startup};
 use crate::storage::Database;
 use chrono::Local;
-use std::sync::Arc;
+use serde::Serialize;
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 
 pub struct AppState {
     pub db: Arc<Database>,
+    /// Effective UI locale ("ko" | "en" | "ja"), resolved once at startup
+    /// (see `main::resolve_initial_locale`) and updated in place whenever
+    /// `set_locale` runs. This is the in-memory cache the rest of the app
+    /// reads; the persisted preference (which may be "system") lives in
+    /// the `Settings` table via `Database::get_setting`/`set_setting`.
+    pub locale: Mutex<String>,
+}
+
+impl AppState {
+    pub fn current_locale(&self) -> String {
+        self.locale.lock().unwrap().clone()
+    }
+}
+
+/// Builds the floating note window title for the given locale, matching
+/// the same "untitled" vs "with title" distinction used by both
+/// `save_note` and `open_floating_note`.
+fn note_window_title(locale: &str, title: &str) -> String {
+    let trimmed = title.trim();
+    if trimmed.is_empty() {
+        i18n::t(locale, "note.window_title_untitled")
+    } else {
+        i18n::tf(locale, "note.window_title_with_title", &[("title", trimmed)])
+    }
 }
 
 #[tauri::command]
@@ -23,10 +49,12 @@ pub fn get_active_notes(state: State<'_, AppState>) -> Result<Vec<NoteModel>, St
             .get_all_archived_notes()
             .map_err(|e| e.to_string())?;
         if archived.is_empty() {
-            // Create Welcome Note matching WPF welcome note
+            // Create a welcome note matching the original WPF welcome note,
+            // in whatever locale is active for this install/session.
+            let locale = state.current_locale();
             let mut welcome = NoteModel::new();
-            welcome.title = "반가워요!".into();
-            welcome.text = "📌 StickerMemo Edge Deck입니다.\n\n• 평소에는 화면 오른쪽 끝에 얇은 띠(Stripe)로 숨어 있습니다.\n• 마우스를 탭 위로 올리면 본문 3줄 미리보기가 펼쳐집니다.\n• 메모 탭을 클릭하면 화면 어디든 자유롭게 드래그 배치할 수 있는 Floating Note로 열립니다.\n• Floating Note 상단 🔤 버튼으로 글꼴/크기/굵기를 변경할 수 있습니다.".into();
+            welcome.title = i18n::t(&locale, "seed.welcome_title");
+            welcome.text = i18n::t(&locale, "seed.welcome_body");
             welcome.theme_id = "Yellow".into();
             welcome.sort_order = 0;
             welcome.recompute_previews();
@@ -74,11 +102,8 @@ pub fn save_note(
 
     let label = format!("note-{}", note.id);
     if let Some(win) = app.get_webview_window(&label) {
-        let win_title = if note.title.trim().is_empty() {
-            "메모 (새 메모)".to_string()
-        } else {
-            format!("메모 - {}", note.title.trim())
-        };
+        let locale = state.current_locale();
+        let win_title = note_window_title(&locale, &note.title);
         let _ = win.set_title(&win_title);
     }
 
@@ -161,10 +186,11 @@ pub fn open_floating_note(
 ) -> Result<(), String> {
     crate::log_startup(&format!("open_floating_note called for ID: {}", id));
     let label = format!("note-{}", id);
+    let locale = state.current_locale();
 
     if let Some(existing) = app.get_webview_window(&label) {
         crate::log_startup(&format!("Existing window found for label: {}, showing and bringing to front", label));
-        
+
         // Update DB is_floating = true
         if let Ok(mut notes) = state.db.get_all_active_notes() {
             if let Some(note) = notes.iter_mut().find(|n| n.id == id) {
@@ -192,7 +218,7 @@ pub fn open_floating_note(
     } else {
         None
     }.ok_or_else(|| {
-        let msg = format!("메모를 찾을 수 없습니다: {}", id);
+        let msg = i18n::tf(&locale, "error.note_not_found", &[("id", &id)]);
         crate::log_startup(&msg);
         msg
     })?;
@@ -208,11 +234,7 @@ pub fn open_floating_note(
     let width = if note.width >= 280.0 { note.width } else { 350.0 };
     let height = if note.height >= 180.0 { note.height } else { 350.0 };
 
-    let win_title = if note.title.trim().is_empty() {
-        "메모 (새 메모)".to_string()
-    } else {
-        format!("메모 - {}", note.title.trim())
-    };
+    let win_title = note_window_title(&locale, &note.title);
 
     let mut builder = WebviewWindowBuilder::new(&app, &label, url)
         .title(&win_title)
@@ -322,8 +344,9 @@ pub fn get_autostart() -> bool {
 }
 
 #[tauri::command]
-pub fn set_autostart_setting(enable: bool) -> Result<(), String> {
-    set_run_at_startup(enable)
+pub fn set_autostart_setting(state: State<'_, AppState>, enable: bool) -> Result<(), String> {
+    let locale = state.current_locale();
+    set_run_at_startup(enable, &locale)
 }
 
 #[tauri::command]
@@ -335,7 +358,8 @@ pub fn import_sticky_notes_cmd(
         .db
         .get_existing_remote_ids()
         .map_err(|e| e.to_string())?;
-    let result = do_import(&existing_ids);
+    let locale = state.current_locale();
+    let result = do_import(&existing_ids, &locale);
 
     if result.success && !result.notes.is_empty() {
         let _ = state.db.save_or_update_notes_batch(&result.notes);
@@ -427,4 +451,90 @@ pub fn get_note_window_position(window: tauri::WebviewWindow) -> Result<(f64, f6
     Ok((pos.x as f64, pos.y as f64))
 }
 
+/// What the WebView needs to know about the current locale: the
+/// *effective* code actually in use ("ko"/"en"/"ja", always one of
+/// `i18n::SUPPORTED_LOCALES`), and the raw *preference* as stored in
+/// Settings ("system" or an explicit code), so the Settings screen can
+/// show the right radio button selected even when it's following the OS.
+#[derive(Serialize)]
+pub struct LocaleInfo {
+    pub effective: String,
+    pub preference: String,
+}
 
+#[tauri::command]
+pub fn get_locale_info(state: State<'_, AppState>) -> Result<LocaleInfo, String> {
+    let preference = state
+        .db
+        .get_setting("locale")
+        .map_err(|e| e.to_string())?
+        .unwrap_or_else(|| "system".to_string());
+    Ok(LocaleInfo {
+        effective: state.current_locale(),
+        preference,
+    })
+}
+
+/// Applies `locale` to every currently open window's OS-level title
+/// (floating notes, About, Settings) and to the tray menu, then broadcasts
+/// `locale-changed` so each open WebView can reload its own dictionary and
+/// retranslate its static markup. Called both from `set_locale` (user
+/// picked a language) and indirectly covers the "System Default" case
+/// since the caller already resolved `locale` before invoking this.
+fn retranslate_everything(app: &AppHandle, state: &State<'_, AppState>, locale: &str) {
+    crate::apply_tray_texts(app, locale);
+
+    let mut notes_by_id = std::collections::HashMap::new();
+    if let Ok(active) = state.db.get_all_active_notes() {
+        for n in active {
+            notes_by_id.insert(n.id.clone(), n);
+        }
+    }
+    if let Ok(archived) = state.db.get_all_archived_notes() {
+        for n in archived {
+            notes_by_id.entry(n.id.clone()).or_insert(n);
+        }
+    }
+
+    for (label, win) in app.webview_windows() {
+        if let Some(id) = label.strip_prefix("note-") {
+            if let Some(note) = notes_by_id.get(id) {
+                let _ = win.set_title(&note_window_title(locale, &note.title));
+            }
+        } else if label == "about" {
+            let _ = win.set_title(&i18n::t(locale, "about.window_title"));
+        } else if label == "settings" {
+            let _ = win.set_title(&i18n::t(locale, "settings.window_title"));
+        }
+    }
+
+    let _ = app.emit("locale-changed", locale);
+}
+
+#[tauri::command]
+pub fn set_locale(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    preference: String,
+) -> Result<(), String> {
+    let pref = preference.trim();
+    let valid = pref == "system" || i18n::SUPPORTED_LOCALES.contains(&pref);
+    if !valid {
+        return Err(format!("Unsupported locale preference: {}", pref));
+    }
+
+    state
+        .db
+        .set_setting("locale", pref)
+        .map_err(|e| e.to_string())?;
+
+    let effective = if pref == "system" {
+        i18n::normalize_locale(&crate::platform::detect_windows_ui_locale()).to_string()
+    } else {
+        i18n::normalize_locale(pref).to_string()
+    };
+    *state.locale.lock().unwrap() = effective.clone();
+
+    retranslate_everything(&app, &state, &effective);
+    Ok(())
+}

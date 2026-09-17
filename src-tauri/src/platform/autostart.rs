@@ -1,3 +1,4 @@
+use crate::i18n;
 use winreg::enums::{HKEY_CURRENT_USER, KEY_READ, KEY_WRITE};
 use winreg::RegKey;
 
@@ -14,19 +15,19 @@ pub fn is_run_at_startup() -> bool {
     }
 }
 
-pub fn set_run_at_startup(enable: bool) -> Result<(), String> {
+pub fn set_run_at_startup(enable: bool, locale: &str) -> Result<(), String> {
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     let run_key = hkcu
         .open_subkey_with_flags(RUN_KEY_PATH, KEY_WRITE)
-        .map_err(|e| format!("레지스트리 키 열기 실패: {}", e))?;
+        .map_err(|e| i18n::tf(locale, "error.registry_open_failed", &[("e", &e.to_string())]))?;
 
     if enable {
         let exe_path = std::env::current_exe()
-            .map_err(|e| format!("실행 파일 경로 확인 실패: {}", e))?;
+            .map_err(|e| i18n::tf(locale, "error.exe_path_failed", &[("e", &e.to_string())]))?;
         let cmd = format!("\"{}\" --autostart", exe_path.display());
         run_key
             .set_value(APP_NAME, &cmd)
-            .map_err(|e| format!("자동 실행 값 설정 실패: {}", e))?;
+            .map_err(|e| i18n::tf(locale, "error.autostart_set_failed", &[("e", &e.to_string())]))?;
     } else {
         let _ = run_key.delete_value(APP_NAME);
     }
