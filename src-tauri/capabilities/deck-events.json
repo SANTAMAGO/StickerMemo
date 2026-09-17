@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "deck-events",
+  "description": "Allow the Edge Deck to receive note changes from floating windows.",
+  "windows": ["deck"],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten"
+  ]
+}

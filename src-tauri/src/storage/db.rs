@@ -309,7 +309,10 @@ impl Database {
 
     pub fn delete_note(&self, id: &str) -> Result<()> {
         let conn = self.conn.lock().unwrap();
-        conn.execute("DELETE FROM Notes WHERE Id = ?1", params![id])?;
+        let deleted = conn.execute("DELETE FROM Notes WHERE Id = ?1", params![id])?;
+        if deleted == 0 {
+            return Err(rusqlite::Error::QueryReturnedNoRows);
+        }
         Ok(())
     }
 

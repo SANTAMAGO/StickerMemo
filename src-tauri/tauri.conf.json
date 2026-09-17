@@ -13,11 +13,11 @@
         "label": "deck",
         "title": "StickerMemo",
         "url": "deck.html",
-        "width": 460,
-        "height": 640,
+        "width": 16,
+        "height": 320,
         "decorations": false,
         "transparent": true,
-        "alwaysOnTop": true,
+        "alwaysOnTop": false,
         "skipTaskbar": true,
         "resizable": false,
         "shadow": false
@@ -35,3 +35,5 @@
     ]
   }
 }
+
+

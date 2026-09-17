@@ -92,14 +92,11 @@ pub fn delete_note(
     id: String,
 ) -> Result<(), String> {
     state.db.delete_note(&id).map_err(|e| e.to_string())?;
-
-    // Close floating window if open
-    let label = format!("note-{}", id);
-    if let Some(win) = app.get_webview_window(&label) {
-        let _ = win.destroy();
+    crate::log_startup(&format!("delete_note: DB delete committed for {}", id));
+    match app.emit("note-deleted", &id) {
+        Ok(()) => crate::log_startup(&format!("delete_note: event emitted for {}", id)),
+        Err(e) => crate::log_startup(&format!("delete_note: event error for {}: {}", id, e)),
     }
-
-    let _ = app.emit("note-deleted", &id);
     Ok(())
 }
 
@@ -156,7 +153,7 @@ pub fn restore_note(
     Ok(())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn open_floating_note(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -373,6 +370,37 @@ pub fn toggle_deck(app: AppHandle) {
 }
 
 #[tauri::command]
+pub fn set_deck_interaction_state(
+    window: tauri::WebviewWindow,
+    state: String,
+    width: f64,
+    height: f64,
+) -> Result<(), String> {
+    if window.label() != "deck" {
+        return Err("set_deck_interaction_state is only valid for the deck window".into());
+    }
+    let scale = window.scale_factor().map_err(|e| e.to_string())?;
+    let physical_width = (width.max(1.0) * scale).round() as u32;
+    let physical_height = (height.max(1.0) * scale).round() as u32;
+    let old_pos = window.outer_position().map_err(|e| e.to_string())?;
+    let old_size = window.outer_size().map_err(|e| e.to_string())?;
+    let right = old_pos.x + old_size.width as i32;
+    let center_y = old_pos.y + (old_size.height as i32 / 2);
+    let new_x = right - physical_width as i32;
+    let new_y = center_y - (physical_height as i32 / 2);
+
+    window.set_size(tauri::PhysicalSize::new(physical_width, physical_height)).map_err(|e| e.to_string())?;
+    window.set_position(tauri::PhysicalPosition::new(new_x, new_y.max(0))).map_err(|e| e.to_string())?;
+    let active = state != "dormant";
+    window.set_always_on_top(active).map_err(|e| e.to_string())?;
+    if active {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+    crate::log_startup(&format!("Deck interaction state={} bounds={}x{} scale={} topmost={}", state, physical_width, physical_height, scale, active));
+    Ok(())
+}
+#[tauri::command]
 pub fn start_dragging(window: tauri::WebviewWindow) -> Result<(), String> {
     window.start_dragging().map_err(|e| e.to_string())
 }
@@ -394,4 +422,5 @@ pub fn get_note_window_position(window: tauri::WebviewWindow) -> Result<(f64, f6
     let pos = window.outer_position().map_err(|e| e.to_string())?;
     Ok((pos.x as f64, pos.y as f64))
 }
+
 

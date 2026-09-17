@@ -216,9 +216,10 @@ function setupEventListeners() {
   // Delete
   deleteBtn.addEventListener("click", async (e) => {
     e.stopPropagation();
-    if (confirm("이 메모를 영구 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.")) {
+    showDeleteConfirm(async () => {
       await invoke("delete_note", { id: note.id });
-    }
+      await invoke("close_floating_note", { id: note.id });
+    });
   });
 
   // Close / Dock back

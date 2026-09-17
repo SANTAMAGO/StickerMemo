@@ -20,6 +20,7 @@ function getTheme(id) {
 }
 
 let allNotes = [];
+let notesLoadVersion = 0;
 let isDeckFan = false;
 let isDrawerOpen = false;
 let isArchivedTab = false;
@@ -28,6 +29,7 @@ let hoveredTab = null;
 let hoverCloseTimer = null;
 let tabLeaveTimer = null;
 let searchDebounceTimer = null;
+let deckBoundsVersion = 0;
 
 const deckContainer = document.getElementById("deck-edge-container");
 const tabsStack = document.getElementById("tabs-stack");
@@ -42,7 +44,24 @@ const tabArchivedBtn = document.getElementById("tab-archived-btn");
 const searchInput = document.getElementById("search-input");
 const drawerList = document.getElementById("drawer-list");
 const drawerFooter = document.getElementById("drawer-footer");
-
+function syncDeckNativeBounds(state) {
+  const version = ++deckBoundsVersion;
+  const delay = state === "preview" ? 180 : 220;
+  setTimeout(() => {
+    if (version !== deckBoundsVersion) return;
+    const rects = [deckContainer.getBoundingClientRect()];
+    if (isDrawerOpen) rects.push(drawerContainer.getBoundingClientRect());
+    const left = Math.min(...rects.map((r) => r.left));
+    const right = Math.max(...rects.map((r) => r.right));
+    const top = Math.min(...rects.map((r) => r.top));
+    const bottom = Math.max(...rects.map((r) => r.bottom));
+    const width = Math.max(1, right - left);
+    const height = Math.max(1, bottom - top);
+    invoke("set_deck_interaction_state", { state, width, height }).catch((err) => {
+      console.error("Failed to sync Deck native bounds:", err);
+    });
+  }, delay);
+}
 // =========================================================
 // INITIALIZATION
 // =========================================================
@@ -50,11 +69,14 @@ async function init() {
   await loadNotes();
   setupEventListeners();
   setupTauriListeners();
+  syncDeckNativeBounds("dormant");
 }
 
 async function loadNotes() {
+  const version = ++notesLoadVersion;
   try {
     const active = await invoke("get_active_notes");
+    if (version !== notesLoadVersion) return;
     allNotes = active;
     renderTabs();
     if (isDrawerOpen) {
@@ -145,6 +167,7 @@ function onTabMouseEnter(tab) {
 
   hoveredTab = tab;
   tab.classList.add("hover-preview");
+  syncDeckNativeBounds("preview");
 }
 
 function onTabMouseLeave(tab) {
@@ -174,6 +197,7 @@ function transitionToFan() {
   isDeckFan = true;
   deckContainer.classList.remove("state-dormant");
   deckContainer.classList.add("state-fan");
+  syncDeckNativeBounds("fan");
 }
 
 function transitionToDormant() {
@@ -181,6 +205,7 @@ function transitionToDormant() {
   isDeckFan = false;
   deckContainer.classList.remove("state-fan");
   deckContainer.classList.add("state-dormant");
+  syncDeckNativeBounds("dormant");
 }
 
 // =========================================================
@@ -194,11 +219,13 @@ async function openDrawer() {
   searchInput.value = "";
   drawerContainer.classList.remove("hidden");
   await renderDrawerList();
+  syncDeckNativeBounds("drawer");
 }
 
 function closeDrawer() {
   isDrawerOpen = false;
   drawerContainer.classList.add("hidden");
+  syncDeckNativeBounds(isDeckFan ? "fan" : "dormant");
 }
 
 async function renderDrawerList() {
@@ -291,11 +318,12 @@ async function renderDrawerList() {
     if (deleteBtn) {
       deleteBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
-        if (confirm("이 메모를 영구 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.")) {
+        showDeleteConfirm(async () => {
           await invoke("delete_note", { id: note.id });
+          await invoke("close_floating_note", { id: note.id });
           await loadNotes();
           await renderDrawerList();
-        }
+        });
       });
     }
 
@@ -371,6 +399,15 @@ function setupEventListeners() {
   });
 }
 
+function removeDeletedNoteFromDeck(id) {
+  ++notesLoadVersion;
+  allNotes = allNotes.filter((n) => n.id !== id);
+  renderTabs();
+  if (isDrawerOpen) renderDrawerList();
+  invoke("log_front", { msg: `Deck removed deleted note ID: ${id}` }).catch(() => {});
+  loadNotes();
+}
+
 function setupTauriListeners() {
   listen("note-updated", (event) => {
     const updated = event.payload;
@@ -386,11 +423,12 @@ function setupTauriListeners() {
     loadNotes();
   });
 
-  listen("note-deleted", (event) => {
-    const id = event.payload;
-    allNotes = allNotes.filter((n) => n.id !== id);
-    renderTabs();
-    if (isDrawerOpen) renderDrawerList();
+  Promise.resolve(listen("note-deleted", (event) => {
+    removeDeletedNoteFromDeck(event.payload);
+  })).then(() => {
+    invoke("log_front", { msg: "Deck note-deleted listener registered" }).catch(() => {});
+  }).catch((error) => {
+    invoke("log_front", { msg: `Deck note-deleted listener failed: ${error}` }).catch(() => {});
   });
 
   listen("floating-state-changed", (event) => {
@@ -426,3 +464,7 @@ function escapeHtml(str) {
 }
 
 document.addEventListener("DOMContentLoaded", init);
+
+
+
+

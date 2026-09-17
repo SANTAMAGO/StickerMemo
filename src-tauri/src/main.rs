@@ -85,6 +85,7 @@ fn main() {
             commands::exit_app,
             commands::log_front,
             commands::toggle_deck,
+            commands::set_deck_interaction_state,
             commands::start_dragging,
             commands::set_note_window_size,
             commands::get_note_window_size,
@@ -127,8 +128,8 @@ fn main() {
             if let Some(deck) = app.get_webview_window("deck") {
                 if let Ok(Some(monitor)) = deck.primary_monitor() {
                     let work_area = monitor.size();
-                    let deck_width = 460;
-                    let deck_height = 640.min((work_area.height as f64 * 0.75) as u32);
+                    let deck_width = 16;
+                    let deck_height = 320.min((work_area.height as f64 * 0.75) as u32);
                     let _ = deck.set_size(PhysicalSize::new(deck_width, deck_height));
 
                     let target_x = (work_area.width as i32) - (deck_width as i32);
@@ -176,6 +177,7 @@ fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         None::<&str>,
     )?;
     let quit_item = MenuItem::with_id(app, "quit", "🚪 StickerMemo 종료", true, None::<&str>)?;
+    let about_item = MenuItem::with_id(app, "about", "StickerMemo 정보...", true, None::<&str>)?;
 
     let menu = Menu::with_items(
         app,
@@ -184,6 +186,7 @@ fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
             &toggle_deck_item,
             &import_item,
             &autostart_item,
+            &about_item,
             &quit_item,
         ],
     )?;
@@ -210,6 +213,13 @@ fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
                 let current = platform::is_run_at_startup();
                 let _ = platform::set_run_at_startup(!current);
             }
+            "about" => {
+                if let Some(window) = app.get_webview_window("about") {
+                    let _ = window.show(); let _ = window.unminimize(); let _ = window.set_focus();
+                } else {
+                    let _ = tauri::WebviewWindowBuilder::new(app, "about", tauri::WebviewUrl::App("about.html".into())).title("StickerMemo 정보").inner_size(320.0, 310.0).min_inner_size(320.0, 310.0).resizable(false).decorations(false).center().build();
+                }
+            }
             "quit" => {
                 perform_clean_exit(app);
             }
@@ -230,3 +240,8 @@ fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+
+
+
+

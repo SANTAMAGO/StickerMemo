@@ -1,0 +1,98 @@
+﻿.delete-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  background: rgba(30, 25, 20, 0.48);
+  font-family: "Malgun Gothic", "Segoe UI", sans-serif;
+}
+
+.delete-confirm-card {
+  box-sizing: border-box;
+  width: min(300px, 100%);
+  max-height: calc(100vh - 12px);
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid #d6b9a7;
+  border-top: 4px solid #b42318;
+  border-radius: 10px;
+  background: #fffdf8;
+  box-shadow: 0 12px 30px rgba(36, 22, 16, 0.3);
+  color: #28211d;
+  text-align: center;
+}
+
+.delete-confirm-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #b42318;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.delete-confirm-card h2 {
+  margin: 6px 0 3px;
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.delete-confirm-card p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.delete-confirm-card .delete-confirm-error {
+  margin-top: 5px;
+  color: #b42318;
+  font-weight: 600;
+}
+
+.delete-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.delete-confirm-actions button {
+  min-width: 58px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.delete-confirm-cancel {
+  border: 1px solid #c6beb4;
+  background: #fff;
+  color: #4b423b;
+}
+
+.delete-confirm-delete {
+  border: 1px solid #991b1b;
+  background: #b42318;
+  color: #fff;
+}
+
+.delete-confirm-actions button:focus-visible {
+  outline: 2px solid #313131;
+  outline-offset: 2px;
+}
+
+.delete-confirm-actions button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
