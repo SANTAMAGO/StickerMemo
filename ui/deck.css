@@ -1,0 +1,430 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+body.deck-body {
+  background: transparent;
+  overflow: hidden;
+  font-family: "Malgun Gothic", "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  height: 100vh;
+  width: 100vw;
+}
+
+.deck-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+/* ========================================================= */
+/* EDGE DECK CONTAINER (Dormant & Fan States)                */
+/* ========================================================= */
+.deck-edge-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 10px 0;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 10;
+}
+
+.tabs-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+/* Individual Note Tab */
+.note-tab {
+  height: 34px;
+  width: 16px; /* Dormant width */
+  border-radius: 8px 0 0 8px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+  box-shadow: -2px 2px 6px rgba(0, 0, 0, 0.1);
+  transition: width 0.16s cubic-bezier(0.16, 1, 0.3, 1), height 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease;
+  padding: 4px 6px;
+  border-style: solid;
+  border-width: 1px 0 1px 1px;
+}
+
+.note-tab.floating {
+  border-width: 2px 0 2px 2px;
+  box-shadow: -3px 3px 10px rgba(0, 0, 0, 0.22);
+}
+
+/* Fan State (135px width) */
+.state-fan .note-tab {
+  width: 135px;
+}
+
+/* Compact Tab Content */
+.tab-compact-view {
+  display: none;
+  align-items: center;
+  width: 100%;
+  white-space: nowrap;
+}
+
+.state-fan .tab-compact-view {
+  display: flex;
+}
+
+.tab-tape-indicator {
+  width: 4px;
+  height: 18px;
+  border-radius: 2px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.tab-title-text {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #232323;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 95px;
+}
+
+.tab-pin-icon {
+  font-size: 9.5px;
+  margin-left: 4px;
+}
+
+/* Hover Preview Card (250px x 80px) */
+.note-tab.hover-preview {
+  width: 250px !important;
+  height: 80px !important;
+  z-index: 100;
+  box-shadow: -4px 6px 16px rgba(0, 0, 0, 0.25);
+  border-radius: 10px 0 0 10px;
+}
+
+.tab-hover-view {
+  display: none;
+  flex-direction: column;
+  width: 230px;
+  padding-left: 2px;
+}
+
+.note-tab.hover-preview .tab-compact-view {
+  display: none !important;
+}
+
+.note-tab.hover-preview .tab-hover-view {
+  display: flex !important;
+}
+
+.hover-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 3px;
+}
+
+.hover-tape {
+  width: 4px;
+  height: 14px;
+  border-radius: 2px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.hover-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #1e1e1e;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hover-body {
+  font-size: 10.5px;
+  color: #414141;
+  line-height: 14.5px;
+  max-height: 44px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  word-break: break-all;
+}
+
+/* More Notes Button */
+.more-notes-btn {
+  background: #E0F2F2F2;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-right: none;
+  border-radius: 8px 0 0 8px;
+  padding: 5px 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #3c3c3c;
+  box-shadow: -2px 2px 6px rgba(0, 0, 0, 0.12);
+  transition: all 0.15s ease;
+}
+
+.more-notes-btn:hover {
+  background: #ffffff;
+  border-color: #000000;
+}
+
+/* Add Note Button */
+.add-note-btn {
+  background: #F8FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #333333;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transition: all 0.15s ease;
+}
+
+.state-fan .add-note-btn {
+  display: flex;
+}
+
+.add-note-btn:hover {
+  background: #ffffff;
+  border-color: #854D0E;
+}
+
+/* ========================================================= */
+/* ALL NOTES DRAWER PANEL                                    */
+/* ========================================================= */
+.drawer-container {
+  position: absolute;
+  right: 150px;
+  width: 310px;
+  max-height: 520px;
+  z-index: 200;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.16s ease;
+}
+
+.drawer-container.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(30px);
+}
+
+.drawer-card {
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.drawer-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #1F2937;
+  display: block;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 6px;
+  color: #6B7280;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.icon-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: #111827;
+}
+
+.segmented-control {
+  display: flex;
+  background: #E5E7EB;
+  border-radius: 6px;
+  padding: 2px;
+  margin-bottom: 8px;
+}
+
+.seg-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 5px 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: #6B7280;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.seg-btn.active {
+  background: #ffffff;
+  color: #1F2937;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  padding: 4px 8px;
+  margin-bottom: 8px;
+}
+
+.search-icon {
+  font-size: 11px;
+  color: #9CA3AF;
+  margin-right: 6px;
+}
+
+.search-box input {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 12px;
+  color: #1F2937;
+}
+
+.drawer-list {
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 2px;
+}
+
+.drawer-list::-webkit-scrollbar {
+  width: 4px;
+}
+.drawer-list::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 2px;
+}
+
+.drawer-item {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 6px;
+  padding: 7px 8px;
+  cursor: pointer;
+  border-style: solid;
+  border-width: 1px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.drawer-item.floating {
+  border-width: 1.5px;
+}
+
+.item-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.item-title {
+  flex: 1;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #282828;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+}
+
+.item-date {
+  font-size: 9.5px;
+  color: #888888;
+}
+
+.restore-btn {
+  background: rgba(34, 197, 94, 0.15);
+  color: #166534;
+  border: none;
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.restore-btn:hover {
+  background: rgba(34, 197, 94, 0.3);
+}
+
+.delete-btn {
+  background: transparent;
+  border: none;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 1px 3px;
+  opacity: 0.8;
+}
+.delete-btn:hover {
+  opacity: 1;
+}
+
+.drawer-footer {
+  margin-top: 8px;
+  font-size: 10px;
+  color: #9CA3AF;
+  text-align: right;
+}
+
+.hidden {
+  display: none !important;
+}

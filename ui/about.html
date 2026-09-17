@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>StickerMemo</title>
+  <link rel="stylesheet" href="about.css">
+</head>
+<body>
+  <main class="about-card">
+    <div class="about-mark">✦</div>
+    <h1>StickerMemo</h1>
+    <p class="version" id="about-version">Version 1.0.0</p>
+    <p data-i18n="about.edition_tag">Rust Edition</p>
+    <p id="about-build">Build: 2026-09-17</p>
+    <p data-i18n="about.tagline">Lightweight Desktop Sticky Notes</p>
+    <div class="about-rule"></div>
+    <small data-i18n="about.credits">Originally built with .NET/WPF, rebuilt with Rust + Tauri.</small>
+    <button id="close" type="button" data-i18n="common.close">닫기</button>
+  </main>
+  <script src="i18n.js"></script>
+  <script>
+    const closeAbout = () => {
+      const t = window.__TAURI__;
+      const w = t && t.window;
+      if (w && w.getCurrentWindow) { w.getCurrentWindow().destroy(); }
+    };
+    document.getElementById("close").addEventListener("click", closeAbout);
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { e.preventDefault(); closeAbout(); }
+    });
+
+    // Static build/version metadata (not user-facing translation content,
+    // just a {placeholder}-substituted label like the Rust side uses).
+    const APP_VERSION = "1.0.0";
+    const BUILD_DATE = "2026-09-17";
+
+    function renderVersionAndBuild() {
+      const I18N = window.StickerMemoI18n;
+      if (!I18N) return;
+      document.getElementById("about-version").textContent = I18N.t("about.version", { v: APP_VERSION });
+      document.getElementById("about-build").textContent = I18N.t("about.build_label", { date: BUILD_DATE });
+      document.title = I18N.t("about.window_title");
+    }
+
+    async function init() {
+      const tauriCore = (window.__TAURI__ && window.__TAURI__.core) || {};
+      const invoke = tauriCore.invoke || (window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.invoke);
+      const I18N = window.StickerMemoI18n;
+      if (I18N && invoke) {
+        try {
+          await I18N.initI18n(invoke);
+          document.documentElement.lang = I18N.getCurrentLocale();
+        } catch (err) {
+          console.error("i18n init failed:", err);
+        }
+      }
+      renderVersionAndBuild();
+
+      // Locale change broadcast from Rust: reload dictionary, retranslate
+      // static markup, and refresh the two param-substituted fields above.
+      const tauriEvent = (window.__TAURI__ && window.__TAURI__.event) || {};
+      const listen = tauriEvent.listen || (window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.listen) || (() => {});
+      listen("locale-changed", async (evt) => {
+        if (!I18N) return;
+        try {
+          await I18N.loadLocale(evt.payload);
+          document.documentElement.lang = I18N.getCurrentLocale();
+          I18N.applyI18n();
+          renderVersionAndBuild();
+        } catch (err) {
+          console.error("Failed to apply locale change:", err);
+        }
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>

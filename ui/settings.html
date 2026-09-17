@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>StickerMemo</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <main class="settings-card">
+    <div class="settings-header">
+      <span class="settings-title" data-i18n="settings.window_title">설정</span>
+      <button id="close" class="icon-btn close-btn" type="button" data-i18n-title="common.close" title="닫기">✕</button>
+    </div>
+
+    <section class="settings-section">
+      <div class="section-label" data-i18n="settings.language_label">언어</div>
+      <div class="lang-options" id="lang-options">
+        <label class="lang-option">
+          <input type="radio" name="language" value="system">
+          <span data-i18n="settings.language_system_default">시스템 기본값</span>
+        </label>
+        <label class="lang-option">
+          <input type="radio" name="language" value="ko">
+          <span>한국어</span>
+        </label>
+        <label class="lang-option">
+          <input type="radio" name="language" value="en">
+          <span>English</span>
+        </label>
+        <label class="lang-option">
+          <input type="radio" name="language" value="ja">
+          <span>日本語</span>
+        </label>
+      </div>
+    </section>
+
+    <div class="settings-rule"></div>
+
+    <section class="settings-section">
+      <label class="autostart-row">
+        <input type="checkbox" id="autostart-checkbox">
+        <span data-i18n="settings.autostart_label">Windows 시작 시 자동 실행</span>
+      </label>
+    </section>
+  </main>
+
+  <script src="i18n.js"></script>
+  <script src="settings.js"></script>
+</body>
+</html>
