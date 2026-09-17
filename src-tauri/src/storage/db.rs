@@ -1,5 +1,5 @@
 use crate::domain::NoteModel;
-use rusqlite::{params, Connection, Result};
+use rusqlite::{params, Connection, OptionalExtension, Result};
 use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
@@ -104,6 +104,19 @@ impl Database {
                 let _ = conn.execute(sql, []);
             }
         }
+
+        // Settings is a separate, purely-additive key/value table (used for
+        // the locale preference, and available for future settings) that
+        // never touches the Notes schema above, so older builds that don't
+        // know about it simply ignore it - existing user databases stay
+        // fully compatible either way.
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS Settings (
+                Key TEXT PRIMARY KEY,
+                Value TEXT
+            );",
+            [],
+        )?;
 
         Ok(())
     }
@@ -326,6 +339,30 @@ impl Database {
         }
         Ok(set)
     }
+
+    /// Reads one value from the Settings key/value table (currently only
+    /// used for the "locale" key). Returns `Ok(None)` when the key has
+    /// never been set, which is distinct from a DB error.
+    pub fn get_setting(&self, key: &str) -> Result<Option<String>> {
+        let conn = self.conn.lock().unwrap();
+        conn.query_row(
+            "SELECT Value FROM Settings WHERE Key = ?1",
+            params![key],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()
+    }
+
+    /// Upserts one value in the Settings key/value table.
+    pub fn set_setting(&self, key: &str, value: &str) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO Settings (Key, Value) VALUES (?1, ?2)
+             ON CONFLICT(Key) DO UPDATE SET Value = excluded.Value;",
+            params![key, value],
+        )?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -368,6 +405,25 @@ mod tests {
         // 5. Delete Note
         db.delete_note(&note1.id).unwrap();
         assert_eq!(db.get_all_archived_notes().unwrap().len(), 0);
+    }
+
+    #[test]
+    fn test_settings_table_is_separate_from_notes() {
+        let db = Database::new_in_memory().expect("failed to init in-memory db");
+
+        // No value set yet.
+        assert_eq!(db.get_setting("locale").unwrap(), None);
+
+        // Set then read back.
+        db.set_setting("locale", "ko").unwrap();
+        assert_eq!(db.get_setting("locale").unwrap(), Some("ko".to_string()));
+
+        // Upsert overwrites rather than erroring or duplicating.
+        db.set_setting("locale", "system").unwrap();
+        assert_eq!(db.get_setting("locale").unwrap(), Some("system".to_string()));
+
+        // Settings never touch Notes.
+        assert_eq!(db.get_all_active_notes().unwrap().len(), 0);
     }
 }
 

@@ -1,9 +1,9 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "about-window",
-  "description": "Permissions for the standalone About window.",
+  "identifier": "settings-window",
+  "description": "Permissions for the standalone Settings window.",
   "windows": [
-    "about"
+    "settings"
   ],
   "permissions": [
     "core:window:allow-destroy",

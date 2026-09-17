@@ -1,12 +1,11 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "about-window",
-  "description": "Permissions for the standalone About window.",
+  "identifier": "note-events",
+  "description": "Allow Floating Note windows to receive locale-changed broadcasts.",
   "windows": [
-    "about"
+    "note-*"
   ],
   "permissions": [
-    "core:window:allow-destroy",
     "core:event:allow-listen",
     "core:event:allow-unlisten"
   ]
