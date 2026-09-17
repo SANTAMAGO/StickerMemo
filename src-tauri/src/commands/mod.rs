@@ -391,13 +391,17 @@ pub fn set_deck_interaction_state(
 
     window.set_size(tauri::PhysicalSize::new(physical_width, physical_height)).map_err(|e| e.to_string())?;
     window.set_position(tauri::PhysicalPosition::new(new_x, new_y.max(0))).map_err(|e| e.to_string())?;
-    let active = state != "dormant";
-    window.set_always_on_top(active).map_err(|e| e.to_string())?;
-    if active {
+    // The deck must stay always-on-top in every interaction state, including
+    // "dormant" (the thin 16px stripe). Only the native window's bounds
+    // change size/position between states; always-on-top must never be
+    // dropped, or the dormant stripe sinks behind other windows.
+    let expanding = state != "dormant";
+    window.set_always_on_top(true).map_err(|e| e.to_string())?;
+    if expanding {
         let _ = window.show();
         let _ = window.set_focus();
     }
-    crate::log_startup(&format!("Deck interaction state={} bounds={}x{} scale={} topmost={}", state, physical_width, physical_height, scale, active));
+    crate::log_startup(&format!("Deck interaction state={} bounds={}x{} scale={} topmost=true", state, physical_width, physical_height, scale));
     Ok(())
 }
 #[tauri::command]
