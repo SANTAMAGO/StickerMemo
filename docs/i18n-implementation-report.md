@@ -167,7 +167,7 @@ Linux이기 때문에 WebView2·Win32 API·`windows_subsystem = "windows"`에
 실제 머신에서 실행할 명령:
 
 ```
-cd "R:\AntiGravity Working\Sticker-Memo\src-tauri"
+cd "<repo-root>/src-tauri"
 cargo test
 cargo build --release
 ```

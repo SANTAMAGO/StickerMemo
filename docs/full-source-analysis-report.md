@@ -1,6 +1,6 @@
 # StickerMemo (Rust/Tauri) 전체 소스코드 분석 보고서
 
-- **분석 대상**: `R:\AntiGravity Working\Sticker-Memo` (src-tauri/, ui/, docs/, tauri.conf.json 등)
+- **분석 대상**: `<repo-root>` (src-tauri/, ui/, docs/, tauri.conf.json 등)
 - **분석 방식**: 코드 정적 분석(읽기 전용). 코드 수정/파일 생성·삭제 없음.
 - **작성일**: 2026-09-17
 - **참고 문서**: `docs/current-architecture.md`(구 WPF 버전 분석), `docs/rust-rebuild-plan.md`(Rust 리빌드 설계서)

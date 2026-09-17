@@ -1,6 +1,6 @@
 # StickerMemo UI 다국어(Localization/i18n) 사전 분석 보고서
 
-- **분석 대상**: `R:\AntiGravity Working\Sticker-Memo` 중 현재 활성 코드베이스인 `src-tauri/`(Rust/Tauri 백엔드) + `ui/`(Vanilla HTML/CSS/JS 프런트엔드)
+- **분석 대상**: `<repo-root>` 중 현재 활성 코드베이스인 `src-tauri/`(Rust/Tauri 백엔드) + `ui/`(Vanilla HTML/CSS/JS 프런트엔드)
 - **분석 방식**: 코드 정적 분석(읽기 전용). **이 보고서 작성 과정에서 어떤 파일도 수정·생성(번역 파일 포함)하지 않았습니다.**
 - **작성일**: 2026-09-17
 - **목표 언어**: 한국어(ko) / English(en) / 日本語(ja), 향후 확장 가능한 구조 전제
